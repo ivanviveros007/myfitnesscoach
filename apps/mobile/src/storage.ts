@@ -132,6 +132,11 @@ export function claimGuest(owner: string) {
       kind: "favorites",
       value: favorites(owner, "movement"),
     });
+    queueData(owner, {
+      key: "favorites:block",
+      kind: "favorites",
+      value: favorites(owner, "block"),
+    });
   });
 }
 
@@ -167,12 +172,13 @@ export function toggleFavorite(owner: string, kind: FavoriteKind, id: string) {
       id,
       new Date().toISOString(),
     );
-  if (kind === "movement")
-    queueData(owner, {
-      key: "favorites:movement",
-      kind: "favorites",
-      value: favorites(owner, "movement"),
-    });
+  const key: "favorites:movement" | "favorites:block" =
+    kind === "movement" ? "favorites:movement" : "favorites:block";
+  queueData(owner, {
+    key,
+    kind: "favorites",
+    value: favorites(owner, kind),
+  });
 }
 // Explicit conflict resolution preserves the local work as an independent session.
 export function preserveConflict(owner: string, id: string) {
@@ -264,14 +270,18 @@ export function mergeData(
       )
         continue;
       if (record.kind === "favorites") {
+        const favoriteKind =
+          record.key === "favorites:block" ? "block" : "movement";
         db.runSync(
-          "DELETE FROM favorites WHERE owner=? AND kind='movement'",
+          "DELETE FROM favorites WHERE owner=? AND kind=?",
           owner,
+          favoriteKind,
         );
         for (const id of record.value)
           db.runSync(
-            "INSERT INTO favorites(owner,kind,id,created_at) VALUES(?,'movement',?,?)",
+            "INSERT INTO favorites(owner,kind,id,created_at) VALUES(?,?,?,?)",
             owner,
+            favoriteKind,
             id,
             new Date().toISOString(),
           );

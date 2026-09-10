@@ -65,7 +65,7 @@ export const cloudDataRecordSchema = z.discriminatedUnion("kind", [
     value: weeklyPlanSchema,
   }),
   z.object({
-    key: z.literal("favorites:movement"),
+    key: z.enum(["favorites:movement", "favorites:block"]),
     kind: z.literal("favorites"),
     value: z.array(z.string().min(1).max(80)).max(500),
   }),

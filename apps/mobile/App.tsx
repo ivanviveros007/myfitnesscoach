@@ -109,6 +109,7 @@ function Main() {
     ? storage.pending(owner).length + storage.pendingData(owner).length
     : 0;
   const favoriteMovements = ready ? storage.favorites(owner, "movement") : [];
+  const favoriteBlocks = ready ? storage.favorites(owner, "block") : [];
   const profile = ready
     ? storage.readSetting<TrainingProfile>(owner, "profile")
     : null;
@@ -426,6 +427,11 @@ function Main() {
                   completed={rows
                     .filter((r) => r.session.finishedAt)
                     .map((r) => r.session.routine.id)}
+                  favoriteBlocks={favoriteBlocks}
+                  onFavoriteBlock={(id) => {
+                    storage.toggleFavorite(owner, "block", id);
+                    setTick((value) => value + 1);
+                  }}
                 />
               ) : (
                 <View style={styles.card}>
