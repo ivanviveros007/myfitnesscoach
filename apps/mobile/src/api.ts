@@ -1,5 +1,12 @@
 import * as SecureStore from "expo-secure-store";
-import { acknowledge, pending, merge } from "./storage";
+import {
+  acknowledge,
+  pending,
+  merge,
+  pendingData,
+  acknowledgeData,
+  mergeData,
+} from "./storage";
 export type Account = { token: string; userId: string; url: string };
 export async function restore(): Promise<Account | null> {
   const data = await SecureStore.getItemAsync("fitness-account");
@@ -59,9 +66,27 @@ export async function sync(account: Account) {
         throw Object.assign(error as Error, { sessionId: operation.id });
       }
     }
+    for (const operation of pendingData(account.userId)) {
+      const result = await request(
+        account.url,
+        "/data/sync",
+        account.token,
+        JSON.parse(operation.payload),
+      );
+      acknowledgeData(
+        account.userId,
+        operation.seq,
+        operation.key,
+        result.version,
+      );
+    }
     merge(
       account.userId,
       await request(account.url, "/sessions", account.token),
+    );
+    mergeData(
+      account.userId,
+      await request(account.url, "/data", account.token),
     );
   } finally {
     running = false;

@@ -43,12 +43,14 @@ Usar una base de pruebas dedicada. La prueba crea usuarios temporales y elimina 
 
 ## Alcance actual y pendientes
 
-- Tres ejercicios de demostración, cada uno con ilustración original de inicio/movimiento, pasos, indicaciones y referencia de video NASM. Las plantillas no son planes personalizados ni han sido revisadas profesionalmente.
-- Las orientaciones cambian el orden y foco de presentación; aún no hay programación deportiva específica ni progresión de cargas.
+- Perfil dentro de la app y planificación semanal de 2, 3 o 4 días según disponibilidad, duración, equipamiento, experiencia y fatiga. Catálogo de 13 ejercicios con ilustración, pasos y video.
+- Bloques de fuerza, estabilidad, flexibilidad, coordinación y potencia cuando corresponde. Base general compartida para pádel/fútbol; la transferencia específica requiere cancha/campo. No hay progresión automática de cargas ni validación profesional individual. Ver [criterios y fuentes](docs/training.md).
+- Perfil, planes, favoritos y sesiones se guardan primero en SQLite y se sincronizan por usuario mediante colas versionadas cuando vuelve la conexión.
+- Tracker semanal, Rendimiento, Biblioteca y alternativa AMRAP de 12 minutos con warm up y registro de rondas.
 - Registro completo/parcial, comentarios, historial local y sincronización mientras la app está abierta o vuelve al primer plano. No se promete ejecución en segundo plano.
 - Los conflictos conservan ambos registros mediante una acción explícita. Todavía no se implementan eliminaciones, edición de rutinas ni paginación del historial.
 - El esquema inicial de PostgreSQL se crea al arrancar; antes de modificarlo se incorporarán migraciones versionadas.
-- Pendientes: IA, perfil ampliado, backoffice, despliegue en la Mac, arranque automático y copias de seguridad.
+- Pendientes: ampliar el catálogo y las opciones AMRAP, métricas longitudinales, IA, backoffice, despliegue en la Mac, arranque automático y copias de seguridad.
 - Compilar bundles no sustituye probar Expo Go en un dispositivo real. La reproducción embebida puede estar restringida por YouTube; se ofrece abrir el video externamente.
 
 [Diseño](docs/architecture.md) · [Sincronización](docs/sync.md)

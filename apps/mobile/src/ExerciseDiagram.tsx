@@ -1,8 +1,58 @@
 import React from "react";
 import Svg, { Circle, Path, Line, Text as SvgText, G } from "react-native-svg";
+import { extraDiagrams } from "./extra-diagrams";
 import type { Exercise } from "@myfitnesscoach/contracts";
 // Original schematic illustrations, packaged as code and available without a network.
 export function ExerciseDiagram({ kind }: { kind: Exercise["illustration"] }) {
+  const poses = extraDiagrams[kind];
+  if (poses)
+    return (
+      <Svg
+        width="100%"
+        height={190}
+        viewBox="0 0 340 180"
+        accessibilityLabel={`Ilustración de ${kind}: inicio y movimiento`}
+      >
+        {poses.map((pose, i) => (
+          <G key={i} transform={`translate(${i * 175 + 5},0)`}>
+            <Line
+              x1={0}
+              y1={145}
+              x2={150}
+              y2={145}
+              stroke="#cad8d2"
+              strokeWidth={2}
+            />
+            {pose.equipment && (
+              <Path
+                d={pose.equipment}
+                stroke="#819b8d"
+                strokeWidth={4}
+                fill="none"
+              />
+            )}
+            <Circle cx={pose.head[0]} cy={pose.head[1]} r={10} fill="#143f37" />
+            <Path
+              d={pose.body}
+              stroke="#143f37"
+              strokeWidth={7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <SvgText x={40} y={169} fontSize={11} fill="#61766d">
+              {i ? "MOVIMIENTO" : "INICIO"}
+            </SvgText>
+          </G>
+        ))}
+        <Path
+          d="M160 70 L174 70 L169 65 M174 70 L169 75"
+          stroke="#72a593"
+          strokeWidth={2}
+          fill="none"
+        />
+      </Svg>
+    );
   const squat = kind === "squat",
     bridge = kind === "bridge";
   return (

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   Alert,
   AppState,
   Linking,
@@ -13,16 +14,29 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
-import { Host, Button as ExpoButton } from "@expo/ui";
+import { Button } from "./src/AppButton";
+import { WeekPlanner } from "./src/WeekPlanner";
+import { PlanOverview } from "./src/PlanOverview";
+import { WeeklyTracker } from "./src/WeeklyTracker";
+import { Performance } from "./src/Performance";
+import { Library } from "./src/Library";
+import { AmrapPanel } from "./src/AmrapPanel";
 import {
   exercises,
   orientations,
   template,
   exerciseStatus,
+  currentWeek,
+  blocks,
+  amrapTemplate,
+  type TrainingProfile,
+  type WeeklyPlan,
+  type Routine,
   type Orientation,
   type Session,
   type Exercise,
@@ -36,28 +50,6 @@ const labels = {
   completed: "Completado",
   skipped: "Omitido",
 };
-function Button({
-  title,
-  onPress,
-  secondary = false,
-  disabled = false,
-}: {
-  title: string;
-  onPress: () => void;
-  secondary?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Host matchContents>
-      <ExpoButton
-        label={title}
-        onPress={onPress}
-        disabled={disabled}
-        variant={secondary ? "outlined" : "filled"}
-      />
-    </Host>
-  );
-}
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -66,6 +58,7 @@ export default function App() {
   );
 }
 function Main() {
+  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<api.Account | null>(null),
     [ready, setReady] = useState(false),
     [orientation, setOrientation] = useState<Orientation>("padel");
@@ -74,6 +67,7 @@ function Main() {
     [selected, setSelected] = useState<string[]>([]);
   const [detail, setDetail] = useState<Exercise | null>(null),
     [video, setVideo] = useState(false),
+    [expandedExercise, setExpandedExercise] = useState<string | null>(null),
     [online, setOnline] = useState(true),
     [notice, setNotice] = useState("Guardado en este dispositivo");
   const [email, setEmail] = useState(""),
@@ -81,11 +75,58 @@ function Main() {
     [url, setUrl] = useState(process.env.EXPO_PUBLIC_API_URL ?? ""),
     [busy, setBusy] = useState(false),
     [tick, setTick] = useState(0);
+  const [planning, setPlanning] = useState(false);
+  const [library, setLibrary] = useState(false);
+  const [planWeek, setPlanWeek] = useState(currentWeek());
+  const scrollRef = useRef<ScrollView>(null);
+  function goBack() {
+    if (detail) {
+      setDetail(null);
+      setVideo(false);
+    } else if (library) {
+      setLibrary(false);
+    } else if (planning) {
+      setPlanning(false);
+    } else if (tab !== "today") {
+      setTab("today");
+    } else if (session) {
+      setSession(null);
+    } else return false;
+    return true;
+  }
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", goBack);
+    return () => sub.remove();
+  }, [detail, tab, session, planning, library]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [tab, session?.id, planning]);
   const owner = account?.userId ?? "guest";
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
   const rows = ready ? storage.history(owner) : [];
-  const count = ready ? storage.pending(owner).length : 0;
+  const count = ready
+    ? storage.pending(owner).length + storage.pendingData(owner).length
+    : 0;
+  const favoriteMovements = ready ? storage.favorites(owner, "movement") : [];
+  const profile = ready
+    ? storage.readSetting<TrainingProfile>(owner, "profile")
+    : null;
+  const plan = ready
+    ? storage.readSetting<WeeklyPlan>(owner, `plan:${orientation}:${planWeek}`)
+    : null;
+  function savePlan(next: WeeklyPlan) {
+    const key = `plan:${next.input.orientation}:${next.input.week}`;
+    const old = storage.readSetting<WeeklyPlan>(owner, key);
+    storage.writeSettings(owner, [
+      ...(old ? [{ key: `${key}:revision:${Date.now()}`, value: old }] : []),
+      { key: "profile", value: next.profile },
+      { key, value: next },
+    ]);
+    setPlanWeek(next.input.week);
+    setPlanning(false);
+    setTick((t) => t + 1);
+  }
   useEffect(() => {
     api
       .restore()
@@ -111,7 +152,7 @@ function Main() {
     try {
       await api.sync(account);
       if (ownerRef.current === syncOwner) {
-        setNotice("Todo sincronizado");
+        setNotice("Entrenamientos sincronizados");
         setSession((current) =>
           current
             ? (storage
@@ -174,13 +215,25 @@ function Main() {
       );
     }
   }
-  function start() {
-    const routine = template(orientation, selected);
+  function start(planned?: Routine) {
+    const routine = planned ?? template(orientation, selected);
     const next: Session = {
       id: Crypto.randomUUID(),
       routine,
       startedAt: new Date().toISOString(),
       finishedAt: null,
+      ...(routine.trainingMode === "amrap"
+        ? {
+            amrap: {
+              durationSeconds:
+                (routine.blocks?.find((block) => block.format === "amrap")
+                  ?.durationMinutes ?? 12) * 60,
+              startedAt: null,
+              rounds: 0,
+              extraReps: 0,
+            },
+          }
+        : {}),
       items: routine.items.map((p) => ({
         exerciseId: p.exercise.id,
         status: "pending",
@@ -259,21 +312,49 @@ function Main() {
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>MY FITNESS COACH</Text>
-          <Text style={styles.subtitle}>Un entrenamiento a la vez.</Text>
+        <View style={styles.brandMark}>
+          <Text style={styles.brandMarkText}>M</Text>
         </View>
-        <View style={styles.pill}>
-          <Text style={styles.pillText}>
-            {online ? "● En línea" : "○ Sin conexión"}
+        <View style={styles.brandCopy}>
+          <Text style={styles.brand}>MY FITNESS COACH</Text>
+          <Text style={styles.subtitle}>
+            {session ? "ENTRENAMIENTO EN CURSO" : "TU PLAN SEMANAL"}
           </Text>
         </View>
+        <View style={styles.pill}>
+          <View
+            style={[styles.statusDot, !online && styles.statusDotOffline]}
+          />
+        </View>
       </View>
+      {(session || planning || tab !== "today") && (
+        <View style={styles.backBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            onPress={goBack}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>← Volver</Text>
+          </Pressable>
+        </View>
+      )}
       <ScrollView
+        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
-        {tab === "today" && !session && (
+        {tab === "today" && !session && planning && (
+          <WeekPlanner
+            key={`${owner}:${orientation}:${planWeek}`}
+            orientation={orientation}
+            profile={profile}
+            previous={plan}
+            onSave={savePlan}
+            onCancel={() => setPlanning(false)}
+          />
+        )}
+        {tab === "today" && !session && !planning && (
           <>
             <Text style={styles.eyebrow}>TU PRÓXIMA SESIÓN</Text>
             <Text style={styles.hero}>Entrená para{"\n"}lo que te mueve.</Text>
@@ -300,70 +381,130 @@ function Main() {
                 </Pressable>
               ))}
             </View>
-            <View style={styles.card}>
-              <Text style={styles.title}>
+            {active && (
+              <Button
+                secondary
+                title="Retomar entrenamiento guardado"
+                onPress={() => setSession(active.session)}
+              />
+            )}
+            {plan && (
+              <WeeklyTracker
+                plan={plan}
+                sessions={rows.map((row) => row.session)}
+              />
+            )}
+            {orientation !== "free" && profile && (
+              <View style={styles.quickCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.eyebrow}>ALTERNATIVA DEL DÍA</Text>
+                  <Text style={styles.quickTitle}>AMRAP corto</Text>
+                  <Text style={styles.quickMuted}>
+                    12 minutos a ritmo sostenible.
+                  </Text>
+                </View>
+                <Pressable
+                  style={styles.quickAction}
+                  onPress={() =>
+                    start(amrapTemplate(orientation, 12, profile.equipment))
+                  }
+                >
+                  <Text style={styles.quickActionText}>Empezar</Text>
+                </Pressable>
+              </View>
+            )}
+            {orientation !== "free" ? (
+              plan ? (
+                <PlanOverview
+                  plan={plan}
+                  onStart={start}
+                  onEdit={() => setPlanning(true)}
+                  onGuide={(e) => {
+                    setDetail(e);
+                    setVideo(false);
+                  }}
+                  completed={rows
+                    .filter((r) => r.session.finishedAt)
+                    .map((r) => r.session.routine.id)}
+                />
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.title}>Primero, tu planificación</Text>
+                  <Text style={styles.body}>
+                    Contanos tu experiencia y los días que tenés esta semana.
+                    Vamos a distribuir fuerza, potencia, transferencia,
+                    estabilidad y flexibilidad según tu contexto.
+                  </Text>
+                  <Button
+                    title="Planificar mis 2, 3 o 4 días"
+                    onPress={() => setPlanning(true)}
+                  />
+                </View>
+              )
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.title}>Armá tu sesión</Text>
+                <Text style={styles.body}>
+                  {orientations[orientation].focus}
+                </Text>
+                <Text style={styles.muted}>
+                  Elegí tus ejercicios y consultá siempre la guía.
+                </Text>
                 {orientation === "free"
-                  ? "Armá tu sesión"
-                  : `Base ${orientations[orientation].name}`}
-              </Text>
-              <Text style={styles.body}>{orientations[orientation].focus}</Text>
-              <Text style={styles.muted}>
-                Plantilla de demostración · sin personalización todavía
-              </Text>
-              {orientation === "free"
-                ? exercises.map((e) => (
-                    <View key={e.id} style={styles.preview}>
+                  ? exercises.map((e) => (
+                      <View key={e.id} style={styles.preview}>
+                        <Pressable
+                          style={{ flex: 1 }}
+                          onPress={() =>
+                            setSelected((s) =>
+                              s.includes(e.id)
+                                ? s.filter((id) => id !== e.id)
+                                : [...s, e.id],
+                            )
+                          }
+                        >
+                          <Text style={styles.body}>
+                            {selected.includes(e.id) ? "✓" : "○"} {e.name}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            setDetail(e);
+                            setVideo(false);
+                          }}
+                        >
+                          <Text style={styles.link}>Guía</Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  : template(orientation).items.map((p) => (
                       <Pressable
-                        style={{ flex: 1 }}
-                        onPress={() =>
-                          setSelected((s) =>
-                            s.includes(e.id)
-                              ? s.filter((id) => id !== e.id)
-                              : [...s, e.id],
-                          )
-                        }
-                      >
-                        <Text style={styles.body}>
-                          {selected.includes(e.id) ? "✓" : "○"} {e.name}
-                        </Text>
-                      </Pressable>
-                      <Pressable
+                        key={p.exercise.id}
                         onPress={() => {
-                          setDetail(e);
+                          setDetail(p.exercise);
                           setVideo(false);
                         }}
+                        style={styles.preview}
                       >
-                        <Text style={styles.link}>Guía</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.body}>{p.exercise.name}</Text>
+                          <Text style={styles.muted}>
+                            {p.sets} series × {p.reps} rep.{" "}
+                            {(p.perSide ?? p.exercise.id === "bird-dog")
+                              ? "por lado"
+                              : ""}
+                          </Text>
+                        </View>
+                        <Text style={styles.link}>Cómo hacerlo ↗</Text>
                       </Pressable>
-                    </View>
-                  ))
-                : template(orientation).items.map((p) => (
-                    <Pressable
-                      key={p.exercise.id}
-                      onPress={() => {
-                        setDetail(p.exercise);
-                        setVideo(false);
-                      }}
-                      style={styles.preview}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.body}>{p.exercise.name}</Text>
-                        <Text style={styles.muted}>
-                          {p.sets} series × {p.reps} rep.{" "}
-                          {p.exercise.id === "bird-dog" ? "por lado" : ""}
-                        </Text>
-                      </View>
-                      <Text style={styles.link}>Cómo hacerlo ↗</Text>
-                    </Pressable>
-                  ))}
-              <Button
-                title={
-                  active ? "Retomar sesión pendiente" : "Comenzar entrenamiento"
-                }
-                disabled={!active && orientation === "free" && !selected.length}
-                onPress={() => (active ? setSession(active.session) : start())}
-              />
-            </View>
+                    ))}
+                <Button
+                  title={"Comenzar sesión libre"}
+                  disabled={!selected.length}
+                  onPress={() => start()}
+                />
+              </View>
+            )}
             <View style={styles.softCard}>
               <Text style={styles.title}>Tu entrenador</Text>
               <Text style={styles.body}>
@@ -376,35 +517,79 @@ function Main() {
         )}
         {tab === "today" && session && (
           <>
-            <Pressable onPress={() => setSession(null)}>
-              <Text style={styles.link}>← Volver al inicio</Text>
-            </Pressable>
             <Text style={styles.hero}>{session.routine.name}</Text>
             <Text style={styles.body}>
               {session.items.filter((i) => i.status === "completed").length} de{" "}
               {session.items.length} ejercicios completos
             </Text>
+            <AmrapPanel
+              session={session}
+              onStart={() =>
+                persist({
+                  ...session,
+                  amrap: session.amrap
+                    ? { ...session.amrap, startedAt: new Date().toISOString() }
+                    : undefined,
+                })
+              }
+              onRound={() =>
+                persist({
+                  ...session,
+                  amrap: session.amrap
+                    ? { ...session.amrap, rounds: session.amrap.rounds + 1 }
+                    : undefined,
+                })
+              }
+            />
             {session.routine.items.map((p, index) => {
               const item = session.items[index];
               return (
                 <View style={styles.card} key={p.exercise.id}>
                   <Text style={styles.eyebrow}>
-                    {String(index + 1).padStart(2, "0")} / {labels[item.status]}
+                    {String(index + 1).padStart(2, "0")} /{" "}
+                    {p.block ? blocks[p.block] : "Ejercicio"} /{" "}
+                    {labels[item.status]}
                   </Text>
                   <Text style={styles.title}>{p.exercise.name}</Text>
-                  <ExerciseDiagram kind={p.exercise.illustration} />
-                  <Text style={styles.body}>{p.exercise.steps[0]}</Text>
+                  {p.effort && <Text style={styles.body}>{p.effort}</Text>}
                   <Button
                     secondary
-                    title="Ver técnica, pasos y video"
-                    onPress={() => {
-                      setDetail(p.exercise);
-                      setVideo(false);
-                    }}
+                    title={
+                      expandedExercise === p.exercise.id
+                        ? "Ocultar demostración"
+                        : "Ver demostración"
+                    }
+                    onPress={() =>
+                      setExpandedExercise(
+                        expandedExercise === p.exercise.id
+                          ? null
+                          : p.exercise.id,
+                      )
+                    }
                   />
+                  {expandedExercise === p.exercise.id && (
+                    <View style={styles.demoPanel}>
+                      <ExerciseDiagram kind={p.exercise.illustration} />
+                      <Text style={styles.body}>{p.exercise.steps[0]}</Text>
+                      <Pressable
+                        onPress={() => {
+                          setDetail(p.exercise);
+                          setVideo(false);
+                        }}
+                        style={styles.guideLink}
+                      >
+                        <Text style={styles.guideLinkText}>
+                          Técnica completa y video →
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
                   <Text style={styles.muted}>
-                    Descanso previsto: {p.restSeconds} s · Peso adicional en kg
-                    {p.exercise.id === "bird-dog"
+                    Descanso previsto: {p.restSeconds} s{" "}
+                    {p.unit !== "seconds"
+                      ? "· Peso adicional en kg"
+                      : "· Tiempo por serie"}
+                    {(p.perSide ?? p.exercise.id === "bird-dog")
                       ? " · Repeticiones por lado"
                       : ""}
                   </Text>
@@ -413,7 +598,7 @@ function Main() {
                       <Text style={styles.body}>Serie {n + 1}</Text>
                       <TextInput
                         editable={!session.finishedAt}
-                        accessibilityLabel={`Repeticiones serie ${n + 1}`}
+                        accessibilityLabel={`${p.unit === "seconds" ? "Segundos" : "Repeticiones"} serie ${n + 1}`}
                         style={styles.number}
                         keyboardType="number-pad"
                         value={String(serie.reps)}
@@ -427,29 +612,35 @@ function Main() {
                             }));
                         }}
                       />
-                      <Text style={styles.muted}>rep.</Text>
-                      <TextInput
-                        editable={!session.finishedAt}
-                        accessibilityLabel={`Peso serie ${n + 1}`}
-                        style={styles.number}
-                        keyboardType="decimal-pad"
-                        value={String(serie.weight)}
-                        onChangeText={(text) => {
-                          const value = Number(text.replace(",", "."));
-                          if (
-                            Number.isFinite(value) &&
-                            value >= 0 &&
-                            value <= 1000
-                          )
-                            updateItem(index, (i) => ({
-                              ...i,
-                              series: i.series.map((s, j) =>
-                                j === n ? { ...s, weight: value } : s,
-                              ),
-                            }));
-                        }}
-                      />
-                      <Text style={styles.muted}>kg</Text>
+                      <Text style={styles.muted}>
+                        {p.unit === "seconds" ? "s" : "rep."}
+                      </Text>
+                      {p.unit !== "seconds" && (
+                        <>
+                          <TextInput
+                            editable={!session.finishedAt}
+                            accessibilityLabel={`Peso serie ${n + 1}`}
+                            style={styles.number}
+                            keyboardType="decimal-pad"
+                            value={String(serie.weight)}
+                            onChangeText={(text) => {
+                              const value = Number(text.replace(",", "."));
+                              if (
+                                Number.isFinite(value) &&
+                                value >= 0 &&
+                                value <= 1000
+                              )
+                                updateItem(index, (i) => ({
+                                  ...i,
+                                  series: i.series.map((s, j) =>
+                                    j === n ? { ...s, weight: value } : s,
+                                  ),
+                                }));
+                            }}
+                          />
+                          <Text style={styles.muted}>kg</Text>
+                        </>
+                      )}
                       <Pressable
                         disabled={!!session.finishedAt}
                         accessibilityRole="checkbox"
@@ -539,108 +730,123 @@ function Main() {
           </>
         )}
         {tab === "history" && (
-          <>
-            <Text style={styles.hero}>Tu recorrido.</Text>
-            <Text style={styles.body}>
-              Tus sesiones completas y parciales, siempre a mano.
-            </Text>
-            {!rows.length && (
-              <Text style={styles.muted}>
-                Todavía no registraste entrenamientos.
+          <Performance sessions={rows.map((row) => row.session)} />
+        )}
+        {tab === "account" &&
+          (library ? (
+            <Library
+              favorites={favoriteMovements}
+              selected={selected}
+              onFavorite={(id) => {
+                storage.toggleFavorite(owner, "movement", id);
+                setTick((value) => value + 1);
+              }}
+              onSelect={(id) =>
+                setSelected((value) =>
+                  value.includes(id)
+                    ? value.filter((item) => item !== id)
+                    : [...value, id],
+                )
+              }
+              onGuide={(exercise) => {
+                setDetail(exercise);
+                setVideo(false);
+              }}
+              onStart={() => {
+                setOrientation("free");
+                start();
+                setLibrary(false);
+                setTab("today");
+              }}
+            />
+          ) : (
+            <>
+              <Text style={styles.hero}>Tu espacio.</Text>
+              <Text style={styles.body}>
+                Podés entrenar sin cuenta. Al ingresar, las sesiones locales se
+                vinculan a tu cuenta y se sincronizan.
               </Text>
-            )}
-            {rows.map(({ session: s }) => (
-              <Pressable
-                key={s.id}
-                style={styles.card}
-                onPress={() => {
-                  setSession(s);
-                  setTab("today");
-                }}
-              >
-                <Text style={styles.eyebrow}>
-                  {new Date(s.startedAt).toLocaleDateString("es-AR")}
-                </Text>
-                <Text style={styles.title}>{s.routine.name}</Text>
-                <Text style={styles.body}>
-                  {s.items.filter((i) => i.status === "completed").length}/
-                  {s.items.length} completos ·{" "}
-                  {s.finishedAt ? "Finalizada" : "En curso"}
-                </Text>
-              </Pressable>
-            ))}
-          </>
-        )}
-        {tab === "account" && (
-          <>
-            <Text style={styles.hero}>Tu espacio.</Text>
-            <Text style={styles.body}>
-              Podés entrenar sin cuenta. Al ingresar, las sesiones locales se
-              vinculan a tu cuenta y se sincronizan.
-            </Text>
-            {account ? (
-              <>
-                <Text style={styles.muted}>{account.url}</Text>
-                <Button
-                  title="Sincronizar ahora"
-                  onPress={() => void synchronize()}
-                />
-                <Button
-                  secondary
-                  title="Cerrar sesión"
-                  onPress={() => {
-                    void api.logout().then(() => {
-                      setAccount(null);
-                      setSession(null);
-                      setNotice(
-                        "Acceso cerrado. Tus registros permanecen asociados a tu cuenta.",
-                      );
-                    });
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <TextInput
-                  accessibilityLabel="URL del backend"
-                  style={styles.input}
-                  autoCapitalize="none"
-                  placeholder="https://tu-api.ngrok-free.dev"
-                  value={url}
-                  onChangeText={setUrl}
-                />
-                <TextInput
-                  accessibilityLabel="Correo"
-                  style={styles.input}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholder="Correo electrónico"
-                  value={email}
-                  onChangeText={setEmail}
-                />
-                <TextInput
-                  accessibilityLabel="Contraseña"
-                  style={styles.input}
-                  secureTextEntry
-                  placeholder="Contraseña · mínimo 12 caracteres"
-                  value={password}
-                  onChangeText={setPassword}
-                />
-                <Button
-                  disabled={busy || !online}
-                  title={busy ? "Conectando…" : "Crear cuenta y sincronizar"}
-                  onPress={() => void authenticate(true)}
-                />
-                <Button
-                  secondary
-                  disabled={busy || !online}
-                  title="Ya tengo cuenta"
-                  onPress={() => void authenticate(false)}
-                />
-              </>
-            )}
-          </>
-        )}
+              <View style={styles.profileCard}>
+                <View style={styles.profileIcon}>
+                  <Text style={styles.profileIconText}>★</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.title}>Mi biblioteca</Text>
+                  <Text style={styles.muted}>
+                    Movimientos favoritos y sesión libre
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setLibrary(true)}
+                  style={styles.profileArrow}
+                >
+                  <Text style={styles.profileArrowText}>›</Text>
+                </Pressable>
+              </View>
+              {account ? (
+                <>
+                  <Text style={styles.muted}>{account.url}</Text>
+                  <Button
+                    title="Sincronizar ahora"
+                    onPress={() => void synchronize()}
+                  />
+                  <Button
+                    secondary
+                    title="Cerrar sesión"
+                    onPress={() => {
+                      void api.logout().then(() => {
+                        setAccount(null);
+                        setSession(null);
+                        setNotice(
+                          "Acceso cerrado. Tus registros permanecen asociados a tu cuenta.",
+                        );
+                      });
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    accessibilityLabel="URL del backend"
+                    style={styles.input}
+                    autoCapitalize="none"
+                    placeholder="https://tu-api.ngrok-free.dev"
+                    value={url}
+                    onChangeText={setUrl}
+                  />
+                  <TextInput
+                    accessibilityLabel="Correo"
+                    style={styles.input}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    placeholder="Correo electrónico"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                  <TextInput
+                    accessibilityLabel="Contraseña"
+                    style={styles.input}
+                    secureTextEntry
+                    placeholder="Contraseña · mínimo 12 caracteres"
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Button
+                    disabled={busy || !online}
+                    title={busy ? "Conectando…" : "Crear cuenta y sincronizar"}
+                    onPress={() => void authenticate(true)}
+                  />
+                  <Button
+                    secondary
+                    disabled={busy || !online}
+                    title="Ya tengo cuenta"
+                    onPress={() => void authenticate(false)}
+                  />
+                </>
+              )}
+            </>
+          ))}
         <Text style={styles.sync}>
           {!online ? "Sin conexión · " : ""}
           {notice}
@@ -651,8 +857,8 @@ function Main() {
         {(
           [
             ["today", "Entrenar"],
-            ["history", "Historial"],
-            ["account", "Mi cuenta"],
+            ["history", "Rendimiento"],
+            ["account", "Perfil"],
           ] as const
         ).map(([key, label]) => (
           <Pressable
@@ -676,16 +882,21 @@ function Main() {
         animationType="slide"
         onRequestClose={() => setDetail(null)}
       >
-        <SafeAreaView style={styles.screen}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <Button
-              secondary
-              title="Cerrar guía"
+        <View style={[styles.screen, { paddingTop: Math.max(insets.top, 12) }]}>
+          <View style={styles.backBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Volver al entrenamiento"
+              style={styles.backButton}
               onPress={() => {
                 setDetail(null);
                 setVideo(false);
               }}
-            />
+            >
+              <Text style={styles.backText}>← Volver al entrenamiento</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.content}>
             {detail && (
               <>
                 <Text style={styles.hero}>{detail.name}</Text>
@@ -722,7 +933,9 @@ function Main() {
                     <WebView
                       style={{ height: 240, backgroundColor: "#edf4ef" }}
                       source={{
-                        uri: `https://www.youtube.com/embed/${detail.videoId}`,
+                        uri: detail.videoId
+                          ? `https://www.youtube.com/embed/${detail.videoId}`
+                          : detail.videoUrl!,
                       }}
                       allowsFullscreenVideo
                       javaScriptEnabled
@@ -735,10 +948,16 @@ function Main() {
                     />
                     <Button
                       secondary
-                      title="Abrir en YouTube"
+                      title={
+                        detail.videoId
+                          ? "Abrir en YouTube"
+                          : "Abrir video en navegador"
+                      }
                       onPress={() =>
                         void Linking.openURL(
-                          `https://www.youtube.com/watch?v=${detail.videoId}`,
+                          detail.videoId
+                            ? `https://www.youtube.com/watch?v=${detail.videoId}`
+                            : detail.videoUrl!,
                         )
                       }
                     />
@@ -747,14 +966,12 @@ function Main() {
                 <Pressable
                   onPress={() => void Linking.openURL(detail.sourceUrl)}
                 >
-                  <Text style={styles.link}>
-                    Fuente de técnica y video: NASM ↗
-                  </Text>
+                  <Text style={styles.link}>Fuente de técnica y video ↗</Text>
                 </Pressable>
               </>
             )}
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -763,20 +980,43 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#f6f7f1" },
   header: {
     paddingHorizontal: 22,
-    paddingVertical: 18,
+    minHeight: 68,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  brandMark: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandMarkText: { fontSize: 19, fontWeight: "900", color: "#143f37" },
+  brandCopy: { flex: 1, paddingHorizontal: 12 },
   brand: {
     fontSize: 12,
     letterSpacing: 2,
     fontWeight: "800",
     color: "#143f37",
   },
-  subtitle: { fontSize: 12, color: "#738379", marginTop: 5 },
-  pill: { backgroundColor: "#e3ece3", padding: 8, borderRadius: 20 },
-  pillText: { fontSize: 11, color: "#315d4d" },
+  subtitle: { fontSize: 10, letterSpacing: 1, color: "#738379", marginTop: 3 },
+  pill: {
+    width: 34,
+    height: 34,
+    backgroundColor: "#e3ece3",
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#3c966e",
+  },
+  statusDotOffline: { backgroundColor: "#c59044" },
   content: { padding: 22, gap: 18, paddingBottom: 40 },
   eyebrow: {
     fontSize: 11,
@@ -808,12 +1048,71 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e8ece3",
   },
+  demoPanel: {
+    backgroundColor: "#f2f5ee",
+    borderRadius: 18,
+    padding: 12,
+    gap: 12,
+  },
+  guideLink: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "#dff5ba",
+  },
+  guideLinkText: { color: "#173e34", fontWeight: "700", fontSize: 15 },
   softCard: {
     padding: 22,
     borderRadius: 22,
     backgroundColor: "#e8eddc",
     gap: 10,
   },
+  quickCard: {
+    backgroundColor: "#173e34",
+    borderRadius: 22,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  quickAction: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: 15,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionText: { fontSize: 14, fontWeight: "800", color: "#173e34" },
+  quickTitle: { fontSize: 21, fontWeight: "800", color: "white" },
+  quickMuted: { fontSize: 12, lineHeight: 18, color: "#c3d0c7" },
+  profileCard: {
+    backgroundColor: "white",
+    borderRadius: 22,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#e1e9de",
+  },
+  profileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileIconText: { fontSize: 20, color: "#173e34" },
+  profileArrow: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileArrowText: { fontSize: 32, color: "#315d4d" },
   title: { fontSize: 21, fontWeight: "700", color: "#193f35" },
   body: { fontSize: 15, lineHeight: 23, color: "#3f554b" },
   muted: { fontSize: 12, lineHeight: 18, color: "#778379" },
@@ -843,9 +1142,16 @@ const styles = StyleSheet.create({
     color: "#193f35",
     backgroundColor: "white",
   },
-  series: { flexDirection: "row", gap: 7, alignItems: "center" },
+  series: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+    paddingVertical: 6,
+  },
   number: {
-    width: 45,
+    width: 56,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: "#dce4d8",
     borderRadius: 9,
@@ -854,8 +1160,8 @@ const styles = StyleSheet.create({
     color: "#143f37",
   },
   check: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 48,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -868,6 +1174,26 @@ const styles = StyleSheet.create({
     borderTopColor: "#e2e8dd",
     paddingVertical: 16,
   },
-  navItem: { flex: 1, alignItems: "center" },
-  navText: { color: "#8b958c", fontSize: 13 },
+  navItem: {
+    flex: 1,
+    minHeight: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  navText: { color: "#68796e", fontSize: 15 },
+  backBar: {
+    paddingHorizontal: 22,
+    paddingVertical: 8,
+    backgroundColor: "#f6f7f1",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8dd",
+  },
+  backButton: {
+    minHeight: 52,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: "#e5eddf",
+  },
+  backText: { fontSize: 17, fontWeight: "700", color: "#214d3e" },
 });

@@ -1,5 +1,5 @@
 import { Injectable, ConflictException } from "@nestjs/common";
-import { syncSchema } from "@myfitnesscoach/contracts";
+import { syncSchema, cloudDataSyncSchema } from "@myfitnesscoach/contracts";
 import { Database } from "./database.js";
 import { digest } from "./auth.js";
 @Injectable()
@@ -59,6 +59,71 @@ export class Sync {
   async list(userId: string) {
     const { rows } = await this.db.pool.query(
       "SELECT data AS session,version FROM training_sessions WHERE user_id=$1 ORDER BY updated_at DESC",
+      [userId],
+    );
+    return rows;
+  }
+  async pushData(
+    userId: string,
+    payload: ReturnType<typeof cloudDataSyncSchema.parse>,
+  ) {
+    const client = await this.db.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
+        userId,
+      ]);
+      const hash = digest(JSON.stringify(payload));
+      const previous = await client.query(
+        "SELECT payload_hash,result FROM sync_operations WHERE user_id=$1 AND operation_id=$2",
+        [userId, payload.operationId],
+      );
+      if (previous.rows.length) {
+        if (previous.rows[0].payload_hash !== hash)
+          throw new ConflictException(
+            "Operación reutilizada con datos diferentes.",
+          );
+        await client.query("COMMIT");
+        return previous.rows[0].result;
+      }
+      const current = await client.query(
+        "SELECT version FROM user_data WHERE user_id=$1 AND key=$2",
+        [userId, payload.record.key],
+      );
+      const version = current.rows[0]?.version ?? 0;
+      if (version !== payload.baseVersion)
+        throw new ConflictException({
+          message: "Los datos cambiaron en otro dispositivo.",
+          serverVersion: version,
+        });
+      const next = version + 1;
+      await client.query(
+        "INSERT INTO user_data(user_id,key,kind,version,data) VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id,key) DO UPDATE SET kind=EXCLUDED.kind,version=EXCLUDED.version,data=EXCLUDED.data,updated_at=now()",
+        [
+          userId,
+          payload.record.key,
+          payload.record.kind,
+          next,
+          JSON.stringify(payload.record.value),
+        ],
+      );
+      const result = { key: payload.record.key, version: next };
+      await client.query(
+        "INSERT INTO sync_operations(user_id,operation_id,payload_hash,result) VALUES($1,$2,$3,$4)",
+        [userId, payload.operationId, hash, JSON.stringify(result)],
+      );
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async listData(userId: string) {
+    const { rows } = await this.db.pool.query(
+      "SELECT key,kind,data AS value,version FROM user_data WHERE user_id=$1 ORDER BY updated_at",
       [userId],
     );
     return rows;

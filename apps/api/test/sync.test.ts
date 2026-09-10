@@ -78,6 +78,27 @@ test("PostgreSQL: retry, concurrent conflict, ownership and persisted history", 
     const history = await sync.list(user.userId);
     assert.equal(history.length, 1);
     assert.equal(history[0].version, 2);
+    const profileOperation = {
+      operationId: randomUUID(),
+      baseVersion: 0,
+      record: {
+        key: "profile" as const,
+        kind: "profile" as const,
+        value: {
+          experience: "regular" as const,
+          equipment: "gym" as const,
+          limitations: "none" as const,
+          notes: "",
+          jumpReady: true,
+        },
+      },
+    };
+    assert.deepEqual(await sync.pushData(user.userId, profileOperation), {
+      key: "profile",
+      version: 1,
+    });
+    assert.equal((await sync.listData(user.userId)).length, 1);
+    assert.equal((await sync.listData(other.userId)).length, 0);
     const secondConnection = new Database();
     try {
       assert.equal(
@@ -92,6 +113,7 @@ test("PostgreSQL: retry, concurrent conflict, ownership and persisted history", 
     assert.equal(sessionSchema.safeParse(malformed).success, false);
   } finally {
     for (const id of [user.userId, other.userId]) {
+      await db.pool.query("DELETE FROM user_data WHERE user_id=$1", [id]);
       await db.pool.query("DELETE FROM sync_operations WHERE user_id=$1", [id]);
       await db.pool.query("DELETE FROM training_sessions WHERE user_id=$1", [
         id,

@@ -18,6 +18,7 @@ import {
   exercises,
   orientations,
   syncSchema,
+  cloudDataSyncSchema,
 } from "@myfitnesscoach/contracts";
 import { Database } from "./database.js";
 import { Auth, AuthGuard, type UserRequest } from "./auth.js";
@@ -61,6 +62,15 @@ class Api {
     @Body() body: unknown,
   ) {
     return this.sync.push(req.userId, parse(syncSchema, body));
+  }
+  @Get("data") @UseGuards(AuthGuard) data(@Req() req: UserRequest) {
+    return this.sync.listData(req.userId);
+  }
+  @Post("data/sync") @UseGuards(AuthGuard) @HttpCode(200) pushData(
+    @Req() req: UserRequest,
+    @Body() body: unknown,
+  ) {
+    return this.sync.pushData(req.userId, parse(cloudDataSyncSchema, body));
   }
 }
 @Module({ controllers: [Api], providers: [Database, Auth, AuthGuard, Sync] })
