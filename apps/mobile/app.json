@@ -21,6 +21,21 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-sqlite", "expo-secure-store"]
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c1249c2c-1d5a-4e13-b38d-b9be77636951"
+      }
+    },
+    "owner": "iviveros.expo",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c1249c2c-1d5a-4e13-b38d-b9be77636951"
+    }
   }
 }
