@@ -306,7 +306,7 @@ export function routineBlocks(routine: Routine): WorkoutBlock[] {
       id: `${routine.id}-legacy`,
       position: 0,
       section: "block-1",
-      title: "Entrenamiento anterior",
+      title: routine.focus?.trim() || "Bloque principal",
       purpose: routine.focus ?? "Sesión guardada",
       format: "sets",
       durationMinutes: routine.estimatedMinutes ?? 30,
