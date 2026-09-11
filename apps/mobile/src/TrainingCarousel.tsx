@@ -9,7 +9,13 @@ import {
   View,
 } from "react-native";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import type { Routine } from "@myfitnesscoach/contracts";
+import { BottomSheet } from "@expo/ui";
+import {
+  routineBlocks,
+  type Routine,
+  type Prescription,
+  type WorkoutBlock,
+} from "@myfitnesscoach/contracts";
 
 type CardImage = "padel" | "strength" | "mobility" | "amrap";
 type Choice = {
@@ -36,6 +42,7 @@ export function TrainingCarousel({
   onStart: (routine: Routine) => void;
 }) {
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
+  const [preview, setPreview] = useState<Choice | null>(null);
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
   if (!current) return null;
@@ -84,7 +91,10 @@ export function TrainingCarousel({
               key={choice.key}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              onPress={() => setSelected(choice.key)}
+              onPress={() => {
+                setSelected(choice.key);
+                setPreview(choice);
+              }}
               style={({ pressed }) => [
                 s.card,
                 { backgroundColor: choice.color },
@@ -126,14 +136,72 @@ export function TrainingCarousel({
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        onPress={() => onStart(current.routine)}
+        onPress={() => setPreview(current)}
         style={({ pressed }) => [s.cta, pressed && s.cardPressed]}
       >
-        <Text style={s.ctaText}>Entrenar · {current.title}</Text>
+        <Text style={s.ctaText}>Ver ejercicios</Text>
         <Text style={s.ctaArrow}>→</Text>
       </Pressable>
+      <BottomSheet
+        isPresented={preview !== null}
+        onDismiss={() => setPreview(null)}
+        showDragIndicator
+        snapPoints={[{ height: 650 }]}
+        containerColor="#f6f7f1"
+      >
+        {preview && (
+          <View style={s.sheet}>
+            <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+            <Text style={s.sheetTitle}>{preview.title}</Text>
+            <Text style={s.sheetMeta}>
+              ≈ {preview.routine.estimatedMinutes} min ·{" "}
+              {preview.routine.items.length} movimientos
+            </Text>
+            <ScrollView
+              style={s.sheetList}
+              contentContainerStyle={s.sheetListContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {routineBlocks(preview.routine).map((block, blockIndex) => (
+                <View key={block.id} style={s.sheetBlock}>
+                  <Text style={s.sheetBlockTitle}>
+                    {String(blockIndex + 1).padStart(2, "0")} · {block.title}
+                  </Text>
+                  {block.items.map((item) => (
+                    <View key={item.exercise.id} style={s.sheetExercise}>
+                      <Text style={s.sheetExerciseName}>
+                        {item.exercise.name}
+                      </Text>
+                      <Text style={s.sheetPrescription}>
+                        {prescriptionLabel(item, block.format)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                onStart(preview.routine);
+                setPreview(null);
+              }}
+              style={({ pressed }) => [s.sheetStart, pressed && s.cardPressed]}
+            >
+              <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
+              <Text style={s.sheetStartArrow}>→</Text>
+            </Pressable>
+          </View>
+        )}
+      </BottomSheet>
     </View>
   );
+}
+
+function prescriptionLabel(item: Prescription, format: WorkoutBlock["format"]) {
+  const amount = `${item.reps} ${item.unit === "seconds" ? "s" : "rep."}`;
+  if (format === "amrap") return `${amount} por ronda`;
+  return `${item.sets} ${item.sets === 1 ? "serie" : "series"} × ${amount}${item.perSide ? " por lado" : ""}`;
 }
 
 const displayFont = Platform.select({
@@ -192,6 +260,57 @@ const s = StyleSheet.create({
   changeRoutineTitle: { color: "#173e34", fontSize: 15, fontWeight: "900" },
   changeRoutineText: { color: "#62766a", fontSize: 11 },
   changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
+  sheet: { flex: 1, padding: 22, paddingTop: 8, gap: 8 },
+  sheetEyebrow: {
+    color: "#6b8073",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+  },
+  sheetTitle: {
+    color: "#173e34",
+    fontFamily: displayFont,
+    fontSize: 33,
+    lineHeight: 37,
+    fontWeight: "900",
+  },
+  sheetMeta: { color: "#61766a", fontSize: 13, marginBottom: 6 },
+  sheetList: { flex: 1 },
+  sheetListContent: { gap: 15, paddingBottom: 12 },
+  sheetBlock: {
+    borderRadius: 19,
+    padding: 15,
+    gap: 9,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#e1e7dd",
+  },
+  sheetBlockTitle: {
+    color: "#173e34",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  sheetExercise: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sheetExerciseName: { flex: 1, color: "#284a40", fontSize: 14 },
+  sheetPrescription: { color: "#708277", fontSize: 11, textAlign: "right" },
+  sheetStart: {
+    minHeight: 62,
+    borderRadius: 20,
+    backgroundColor: "#c8ff63",
+    paddingHorizontal: 19,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sheetStartText: { color: "#173e34", fontSize: 17, fontWeight: "900" },
+  sheetStartArrow: { color: "#173e34", fontSize: 25, fontWeight: "900" },
   image: { flex: 1, margin: -17, padding: 17, justifyContent: "space-between" },
   cardImage: { borderRadius: 22 },
   imageShade: {
