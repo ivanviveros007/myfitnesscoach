@@ -19,19 +19,21 @@ import NetInfo from "@react-native-community/netinfo";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
+import { BottomSheet } from "@expo/ui";
 import { Button } from "./src/AppButton";
 import { WeekPlanner } from "./src/WeekPlanner";
 import { PlanOverview } from "./src/PlanOverview";
-import { WeeklyTracker } from "./src/WeeklyTracker";
 import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
+import { TodayWorkout } from "./src/TodayWorkout";
 import {
   exercises,
   orientations,
   template,
   exerciseStatus,
   currentWeek,
+  makeWeeklyPlan,
   blocks,
   amrapTemplate,
   type TrainingProfile,
@@ -50,6 +52,66 @@ const labels = {
   completed: "Completado",
   skipped: "Omitido",
 };
+const replacementGroups = {
+  warmup: ["leg-swing", "shuffle", "calf-stretch", "child"],
+  power: ["jump", "shuffle", "squat"],
+  transfer: ["shuffle", "jump", "leg-swing"],
+  strength: [
+    "squat",
+    "goblet",
+    "rdl",
+    "bridge",
+    "incline-push",
+    "machine-row",
+    "dumbbell-row",
+  ],
+  stability: ["bird-dog", "bridge", "squat"],
+  flexibility: ["child", "calf-stretch", "leg-swing"],
+};
+function availableReplacements(
+  current: Exercise,
+  block: keyof typeof replacementGroups | undefined,
+  equipment: TrainingProfile["equipment"] = "gym",
+) {
+  const ids = block
+    ? replacementGroups[block]
+    : exercises.map((exercise) => exercise.id);
+  return ids
+    .map((id) => exercises.find((exercise) => exercise.id === id))
+    .filter(
+      (exercise): exercise is Exercise =>
+        !!exercise && exercise.id !== current.id,
+    )
+    .filter(
+      (exercise) => equipment === "gym" || !/máquina/i.test(exercise.equipment),
+    )
+    .filter(
+      (exercise) =>
+        equipment !== "bodyweight" ||
+        !/mancuerna|kettlebell/i.test(exercise.equipment),
+    )
+    .slice(0, 5);
+}
+function currentTrainingStreak(sessions: Session[]) {
+  const days = [
+    ...new Set(
+      sessions
+        .filter((session) => session.finishedAt)
+        .map((session) => session.finishedAt!.slice(0, 10)),
+    ),
+  ]
+    .sort()
+    .reverse();
+  if (!days.length) return 0;
+  const cursor = new Date(`${days[0]}T12:00:00`);
+  let streak = 0;
+  for (const day of days) {
+    if (day !== cursor.toISOString().slice(0, 10)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -77,6 +139,10 @@ function Main() {
     [tick, setTick] = useState(0);
   const [planning, setPlanning] = useState(false);
   const [library, setLibrary] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
+  const [todayMenu, setTodayMenu] = useState(false);
+  const [swapIndex, setSwapIndex] = useState<number | null>(null);
+  const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
   const [planWeek, setPlanWeek] = useState(currentWeek());
   const scrollRef = useRef<ScrollView>(null);
   function goBack() {
@@ -116,6 +182,41 @@ function Main() {
   const plan = ready
     ? storage.readSetting<WeeklyPlan>(owner, `plan:${orientation}:${planWeek}`)
     : null;
+  const effectivePlan =
+    plan ??
+    (profile && orientation !== "free"
+      ? makeWeeklyPlan(profile, {
+          week: currentWeek(),
+          orientation,
+          days: [0, 2, 4, 6],
+          sportDays: [],
+          minutes: 45,
+          readiness: "normal",
+        })
+      : null);
+  const finishedForSport = rows.filter(
+    (row) =>
+      row.session.finishedAt && row.session.routine.orientation === orientation,
+  );
+  const baseRoutine = effectivePlan?.routines.length
+    ? effectivePlan.routines[
+        finishedForSport.length % effectivePlan.routines.length
+      ]
+    : null;
+  const todayRoutine = baseRoutine
+    ? {
+        ...baseRoutine,
+        id: `today-${orientation}-${planWeek}-${finishedForSport.length}`,
+        name: `Hoy · ${baseRoutine.name.replace(/^.*? · /, "")}`,
+        scheduledDay: undefined,
+      }
+    : null;
+  const weekStart = new Date(`${currentWeek()}T00:00:00`).getTime();
+  const sessionsThisWeek = rows.filter(
+    (row) =>
+      row.session.finishedAt &&
+      new Date(row.session.startedAt).getTime() >= weekStart,
+  ).length;
   function savePlan(next: WeeklyPlan) {
     const key = `plan:${next.input.orientation}:${next.input.week}`;
     const old = storage.readSetting<WeeklyPlan>(owner, key);
@@ -260,6 +361,45 @@ function Main() {
       ),
     });
   }
+  function replaceExercise(index: number, replacement: Exercise) {
+    if (!session) return;
+    const previous = session.routine.items[index];
+    const nextPrescription = { ...previous, exercise: replacement };
+    let seen = -1;
+    const nextBlocks = session.routine.blocks?.map((block) => ({
+      ...block,
+      items: block.items.map((item) => {
+        seen++;
+        return seen === index ? nextPrescription : item;
+      }),
+    }));
+    persist({
+      ...session,
+      routine: {
+        ...session.routine,
+        items: session.routine.items.map((item, itemIndex) =>
+          itemIndex === index ? nextPrescription : item,
+        ),
+        ...(nextBlocks ? { blocks: nextBlocks } : {}),
+      },
+      items: session.items.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              exerciseId: replacement.id,
+              status: "pending" as const,
+              comment: "",
+              series: Array.from({ length: nextPrescription.sets }, () => ({
+                reps: nextPrescription.reps,
+                weight: 0,
+                done: false,
+              })),
+            }
+          : item,
+      ),
+    });
+    setExpandedExercise(null);
+    setSwapIndex(null);
+  }
   async function authenticate(register: boolean) {
     if (busy) return;
     try {
@@ -319,7 +459,7 @@ function Main() {
         <View style={styles.brandCopy}>
           <Text style={styles.brand}>MY FITNESS COACH</Text>
           <Text style={styles.subtitle}>
-            {session ? "ENTRENAMIENTO EN CURSO" : "TU PLAN SEMANAL"}
+            {session ? "ENTRENAMIENTO EN CURSO" : "TU PRÓXIMA SESIÓN"}
           </Text>
         </View>
         <View style={styles.pill}>
@@ -357,15 +497,18 @@ function Main() {
         )}
         {tab === "today" && !session && !planning && (
           <>
-            <Text style={styles.eyebrow}>TU PRÓXIMA SESIÓN</Text>
-            <Text style={styles.hero}>Entrená para{"\n"}lo que te mueve.</Text>
+            <Text style={styles.eyebrow}>TU ENTRENAMIENTO, A TU RITMO</Text>
+            <Text style={styles.hero}>Hoy también{"\n"}cuenta.</Text>
             <View style={styles.wrap}>
               {(Object.keys(orientations) as Orientation[]).map((key) => (
                 <Pressable
                   key={key}
                   accessibilityRole="button"
                   accessibilityState={{ selected: orientation === key }}
-                  onPress={() => setOrientation(key)}
+                  onPress={() => {
+                    setOrientation(key);
+                    setShowPlan(false);
+                  }}
                   style={[
                     styles.chip,
                     orientation === key && styles.chipActive,
@@ -389,10 +532,14 @@ function Main() {
                 onPress={() => setSession(active.session)}
               />
             )}
-            {plan && (
-              <WeeklyTracker
-                plan={plan}
-                sessions={rows.map((row) => row.session)}
+            {orientation !== "free" && profile && todayRoutine && (
+              <TodayWorkout
+                routine={todayRoutine}
+                sessionsThisWeek={sessionsThisWeek}
+                streak={currentTrainingStreak(rows.map((row) => row.session))}
+                onStart={() => start(todayRoutine)}
+                onPlan={() => setShowPlan((value) => !value)}
+                onAdjust={() => setTodayMenu(true)}
               />
             )}
             {orientation !== "free" && profile && (
@@ -415,34 +562,36 @@ function Main() {
               </View>
             )}
             {orientation !== "free" ? (
-              plan ? (
-                <PlanOverview
-                  plan={plan}
-                  onStart={start}
-                  onEdit={() => setPlanning(true)}
-                  onGuide={(e) => {
-                    setDetail(e);
-                    setVideo(false);
-                  }}
-                  completed={rows
-                    .filter((r) => r.session.finishedAt)
-                    .map((r) => r.session.routine.id)}
-                  favoriteBlocks={favoriteBlocks}
-                  onFavoriteBlock={(id) => {
-                    storage.toggleFavorite(owner, "block", id);
-                    setTick((value) => value + 1);
-                  }}
-                />
+              profile && effectivePlan && todayRoutine ? (
+                showPlan ? (
+                  <PlanOverview
+                    plan={effectivePlan}
+                    onStart={start}
+                    onEdit={() => setPlanning(true)}
+                    onGuide={(e) => {
+                      setDetail(e);
+                      setVideo(false);
+                    }}
+                    completed={rows
+                      .filter((r) => r.session.finishedAt)
+                      .map((r) => r.session.routine.id)}
+                    favoriteBlocks={favoriteBlocks}
+                    onFavoriteBlock={(id) => {
+                      storage.toggleFavorite(owner, "block", id);
+                      setTick((value) => value + 1);
+                    }}
+                  />
+                ) : null
               ) : (
                 <View style={styles.card}>
-                  <Text style={styles.title}>Primero, tu planificación</Text>
+                  <Text style={styles.title}>Primero, queremos conocerte</Text>
                   <Text style={styles.body}>
-                    Contanos tu experiencia y los días que tenés esta semana.
-                    Vamos a distribuir fuerza, potencia, transferencia,
-                    estabilidad y flexibilidad según tu contexto.
+                    Contanos tu experiencia, el material habitual y tus
+                    limitaciones. Después podés entrenar todos los días que
+                    quieras: iremos adaptando la próxima sesión.
                   </Text>
                   <Button
-                    title="Planificar mis 2, 3 o 4 días"
+                    title="Configurar mi entrenador"
                     onPress={() => setPlanning(true)}
                   />
                 </View>
@@ -512,11 +661,11 @@ function Main() {
               </View>
             )}
             <View style={styles.softCard}>
-              <Text style={styles.title}>Tu entrenador</Text>
+              <Text style={styles.title}>Una sesión a la vez</Text>
               <Text style={styles.body}>
                 {!online
                   ? "Tu entrenador vuelve cuando recuperes la conexión. Podés seguir entrenando y registrar tu progreso."
-                  : "Estamos preparando tu asistente. Por ahora podés explorar las rutinas y registrar tus sesiones."}
+                  : "Cada vez que vuelvas, elegiremos la próxima carga según lo que ya hiciste. Tu historial guía el entrenamiento; una meta semanal no te limita."}
               </Text>
             </View>
           </>
@@ -557,6 +706,20 @@ function Main() {
                     {labels[item.status]}
                   </Text>
                   <Text style={styles.title}>{p.exercise.name}</Text>
+                  {!session.finishedAt && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setSwapWithoutEquipment(false);
+                        setSwapIndex(index);
+                      }}
+                      style={styles.swapButton}
+                    >
+                      <Text style={styles.swapButtonText}>
+                        Cambiar ejercicio ·•••
+                      </Text>
+                    </Pressable>
+                  )}
                   {p.effort && <Text style={styles.body}>{p.effort}</Text>}
                   <Button
                     secondary
@@ -883,6 +1046,108 @@ function Main() {
           </Pressable>
         ))}
       </View>
+      <BottomSheet
+        isPresented={todayMenu}
+        onDismiss={() => setTodayMenu(false)}
+        showDragIndicator
+        snapPoints={[{ height: 300 }]}
+        containerColor="#f6f7f1"
+      >
+        <View style={styles.sheetContent}>
+          <Text style={styles.sheetEyebrow}>SESIÓN DE HOY</Text>
+          <Text style={styles.sheetTitle}>¿Querés ajustar algo?</Text>
+          <Pressable
+            style={styles.sheetAction}
+            onPress={() => {
+              setTodayMenu(false);
+              setPlanning(true);
+            }}
+          >
+            <Text style={styles.sheetActionText}>
+              Cambiar perfil o equipamiento
+            </Text>
+            <Text style={styles.sheetArrow}>›</Text>
+          </Pressable>
+          <Pressable
+            style={styles.sheetAction}
+            onPress={() => {
+              if (profile)
+                start(amrapTemplate(orientation, 12, profile.equipment));
+              setTodayMenu(false);
+            }}
+          >
+            <Text style={styles.sheetActionText}>
+              Hacer un AMRAP de 12 minutos
+            </Text>
+            <Text style={styles.sheetArrow}>›</Text>
+          </Pressable>
+        </View>
+      </BottomSheet>
+      <BottomSheet
+        isPresented={swapIndex !== null}
+        onDismiss={() => setSwapIndex(null)}
+        showDragIndicator
+        snapPoints={[{ height: 560 }]}
+        containerColor="#f6f7f1"
+      >
+        {session &&
+          swapIndex !== null &&
+          (() => {
+            const current = session.routine.items[swapIndex];
+            const replacements = availableReplacements(
+              current.exercise,
+              current.block,
+              swapWithoutEquipment ? "bodyweight" : profile?.equipment,
+            );
+            return (
+              <View style={styles.sheetContent}>
+                <Text style={styles.sheetEyebrow}>CAMBIAR MOVIMIENTO</Text>
+                <Text style={styles.sheetTitle}>{current.exercise.name}</Text>
+                <Text style={styles.sheetBody}>
+                  Elegí una alternativa para el mismo bloque. Conservaremos las
+                  series y el objetivo de la sesión.
+                </Text>
+                <View style={styles.reasonRow}>
+                  <Pressable
+                    onPress={() => setSwapWithoutEquipment((value) => !value)}
+                  >
+                    <Text
+                      style={[
+                        styles.reasonPill,
+                        swapWithoutEquipment && styles.reasonPillActive,
+                      ]}
+                    >
+                      {swapWithoutEquipment ? "✓ " : ""}No tengo material
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.reasonPill}>
+                    Mismo objetivo del bloque
+                  </Text>
+                </View>
+                {replacements.map((exercise) => (
+                  <Pressable
+                    key={exercise.id}
+                    style={styles.replacement}
+                    onPress={() => replaceExercise(swapIndex, exercise)}
+                  >
+                    <View style={styles.replacementIcon}>
+                      <Text style={styles.replacementIconText}>↻</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.replacementTitle}>
+                        {exercise.name}
+                      </Text>
+                      <Text style={styles.muted}>
+                        {exercise.muscles} · {exercise.equipment}
+                      </Text>
+                    </View>
+                    <Text style={styles.sheetArrow}>›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            );
+          })()}
+      </BottomSheet>
       <Modal
         visible={!!detail}
         animationType="slide"
@@ -1068,6 +1333,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#dff5ba",
   },
   guideLinkText: { color: "#173e34", fontWeight: "700", fontSize: 15 },
+  swapButton: {
+    minHeight: 50,
+    paddingHorizontal: 15,
+    borderRadius: 15,
+    backgroundColor: "#edf2e8",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  swapButtonText: { color: "#173e34", fontSize: 14, fontWeight: "800" },
   softCard: {
     padding: 22,
     borderRadius: 22,
@@ -1202,4 +1477,76 @@ const styles = StyleSheet.create({
     backgroundColor: "#e5eddf",
   },
   backText: { fontSize: 17, fontWeight: "700", color: "#214d3e" },
+  sheetContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 26,
+    gap: 12,
+  },
+  sheetEyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    fontWeight: "900",
+    color: "#6b7e71",
+  },
+  sheetTitle: {
+    fontSize: 27,
+    lineHeight: 32,
+    fontWeight: "900",
+    letterSpacing: -0.6,
+    color: "#173e34",
+  },
+  sheetBody: { fontSize: 14, lineHeight: 20, color: "#526257" },
+  sheetAction: {
+    minHeight: 62,
+    paddingHorizontal: 17,
+    borderRadius: 18,
+    backgroundColor: "white",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sheetActionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#173e34",
+  },
+  sheetArrow: { fontSize: 28, color: "#527061" },
+  reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  reasonPill: {
+    overflow: "hidden",
+    borderRadius: 99,
+    backgroundColor: "#e8eddf",
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    color: "#426052",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  reasonPillActive: { backgroundColor: "#173e34", color: "#c8ff63" },
+  replacement: {
+    minHeight: 70,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e1e7dc",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  replacementIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  replacementIconText: { fontSize: 20, fontWeight: "900", color: "#173e34" },
+  replacementTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "800",
+    color: "#173e34",
+  },
 });

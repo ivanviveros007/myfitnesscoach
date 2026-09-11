@@ -70,22 +70,17 @@ export function WeekPlanner({
   const [notes, setNotes] = useState(profile?.notes ?? "");
   const [jumpReady, setJumpReady] = useState(profile?.jumpReady ?? false);
   const [week, setWeek] = useState(previous?.input.week ?? currentWeek());
-  const [days, setDays] = useState<number[]>(previous?.input.days ?? []),
-    [sportDays, setSportDays] = useState<number[]>(
-      previous?.input.sportDays ?? [],
-    );
+  const days = previous?.input.days ?? [0, 2, 4, 6];
+  const [sportDays, setSportDays] = useState<number[]>(
+    previous?.input.sportDays ?? [],
+  );
   const [minutes, setMinutes] = useState<30 | 45 | 60>(
       previous?.input.minutes ?? 45,
     ),
     [readiness, setReadiness] = useState<WeekInput["readiness"]>(
       previous?.input.readiness ?? "normal",
     );
-  const complete =
-    experience &&
-    equipment &&
-    limitations &&
-    days.length >= 2 &&
-    days.length <= 4;
+  const complete = experience && equipment && limitations;
   function create() {
     if (!complete) return;
     try {
@@ -106,10 +101,10 @@ export function WeekPlanner({
   }
   return (
     <View style={s.container}>
-      <Text style={s.title}>Planificá tu semana</Text>
+      <Text style={s.title}>Configurá tu entrenador</Text>
       <Text style={s.body}>
-        Tus días pueden cambiar. Ajustamos la distribución y conservamos lo que
-        ya entrenaste.
+        No necesitás anticipar cuántas veces vas a venir. Con estos datos
+        prepararemos la mejor próxima sesión cada vez que entrenes.
       </Text>
       <Text style={s.label}>Experiencia con fuerza</Text>
       <Choices
@@ -182,32 +177,6 @@ export function WeekPlanner({
         value={week}
         onChange={setWeek}
       />
-      <Text style={s.label}>
-        ¿Qué días podés entrenar? Elegí de 2 a 4 ({days.length})
-      </Text>
-      <View style={s.choices}>
-        {dayNames.map((name, i) => (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: days.includes(i) }}
-            key={name}
-            style={[s.chip, days.includes(i) && s.selected]}
-            onPress={() =>
-              setDays((d) =>
-                d.includes(i)
-                  ? d.filter((x) => x !== i)
-                  : d.length < 4
-                    ? [...d, i]
-                    : d,
-              )
-            }
-          >
-            <Text style={[s.text, days.includes(i) && { color: "white" }]}>
-              {name}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
       <Text style={s.label}>Tiempo por sesión</Text>
       <Choices
         values={[
@@ -253,7 +222,7 @@ export function WeekPlanner({
         onChange={setReadiness}
       />
       <Button
-        title="Guardar y ver mi planificación"
+        title="Guardar y preparar mi sesión"
         disabled={!complete}
         onPress={create}
       />
