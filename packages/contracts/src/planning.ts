@@ -184,7 +184,7 @@ export function makeWeeklyPlan(
       add(
         "jump",
         "power",
-        2,
+        3,
         3,
         120,
         "Recepción estable. Detené la serie si perdés velocidad o control.",

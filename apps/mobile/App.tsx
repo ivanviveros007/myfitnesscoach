@@ -739,6 +739,8 @@ function Main() {
             />
             {session.routine.items.map((p, index) => {
               const item = session.items[index];
+              const tracksWeight =
+                p.unit !== "seconds" && p.exercise.id !== "jump";
               return (
                 <View style={styles.card} key={p.exercise.id}>
                   <Text style={styles.eyebrow}>
@@ -796,9 +798,11 @@ function Main() {
                   )}
                   <Text style={styles.muted}>
                     Descanso previsto: {p.restSeconds} s{" "}
-                    {p.unit !== "seconds"
+                    {tracksWeight
                       ? "· Peso adicional en kg"
-                      : "· Tiempo por serie"}
+                      : p.unit === "seconds"
+                        ? "· Tiempo por serie"
+                        : "· Solo peso corporal"}
                     {(p.perSide ?? p.exercise.id === "bird-dog")
                       ? " · Repeticiones por lado"
                       : ""}
@@ -834,7 +838,7 @@ function Main() {
                       <Text style={styles.muted}>
                         {p.unit === "seconds" ? "s" : "rep."}
                       </Text>
-                      {p.unit !== "seconds" && (
+                      {tracksWeight && (
                         <>
                           <TextInput
                             editable={!session.finishedAt}
