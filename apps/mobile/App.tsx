@@ -1082,7 +1082,7 @@ function Main() {
         onDismiss={() => setTodayMenu(false)}
         showDragIndicator
         snapPoints={[{ height: 380 }]}
-        containerColor="#f6f7f1"
+        containerColor="#17211d"
       >
         <View style={styles.sheetContent}>
           <Text style={styles.sheetEyebrow}>SESIÓN DE HOY</Text>
@@ -1131,7 +1131,7 @@ function Main() {
         onDismiss={() => setSwapIndex(null)}
         showDragIndicator
         snapPoints={[{ height: 560 }]}
-        containerColor="#f6f7f1"
+        containerColor="#17211d"
       >
         {session &&
           swapIndex !== null &&
@@ -1539,7 +1539,7 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: 17, fontWeight: "700", color: "#214d3e" },
   sheetContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 26,
     gap: 12,
@@ -1548,16 +1548,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     fontWeight: "900",
-    color: "#6b7e71",
+    color: "#c8ff63",
   },
   sheetTitle: {
     fontSize: 27,
     lineHeight: 32,
     fontWeight: "900",
     letterSpacing: -0.6,
-    color: "#173e34",
+    color: "white",
   },
-  sheetBody: { fontSize: 14, lineHeight: 20, color: "#526257" },
+  sheetBody: { fontSize: 14, lineHeight: 20, color: "#b8c7bd" },
   sheetAction: {
     minHeight: 62,
     paddingHorizontal: 17,
@@ -1578,7 +1578,7 @@ const styles = StyleSheet.create({
   reasonPill: {
     overflow: "hidden",
     borderRadius: 99,
-    backgroundColor: "#e8eddf",
+    backgroundColor: "white",
     paddingVertical: 7,
     paddingHorizontal: 10,
     color: "#426052",
@@ -1588,9 +1588,10 @@ const styles = StyleSheet.create({
   reasonPillActive: { backgroundColor: "#173e34", color: "#c8ff63" },
   replacement: {
     minHeight: 70,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e1e7dc",
+    paddingVertical: 10,
+    paddingHorizontal: 13,
+    borderRadius: 18,
+    backgroundColor: "white",
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
