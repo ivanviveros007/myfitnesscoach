@@ -26,8 +26,8 @@ import { PlanOverview } from "./src/PlanOverview";
 import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
-import { TodayWorkout } from "./src/TodayWorkout";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
+import { TrainingCarousel } from "./src/TrainingCarousel";
 import {
   exercises,
   orientations,
@@ -218,6 +218,49 @@ function Main() {
       row.session.finishedAt &&
       new Date(row.session.startedAt).getTime() >= weekStart,
   ).length;
+  const trainingChoices =
+    todayRoutine && effectivePlan && profile
+      ? [
+          {
+            key: "recommended",
+            title: "Sesión recomendada",
+            tag: "PARA HOY",
+            icon: "sparkles" as const,
+            routine: todayRoutine,
+            color: "#173e34",
+            image: true,
+          },
+          {
+            key: "strength",
+            title: "Fuerza total",
+            tag: "FUERZA · CONTROL",
+            icon: "dumbbell.fill" as const,
+            routine:
+              effectivePlan.routines.find((candidate) =>
+                candidate.name.includes("Fuerza"),
+              ) ?? todayRoutine,
+            color: "#ef6d4f",
+          },
+          {
+            key: "mobility",
+            title: "Mover y recuperar",
+            tag: "MOVILIDAD",
+            icon: "figure.flexibility" as const,
+            routine:
+              effectivePlan.routines[effectivePlan.routines.length - 1] ??
+              todayRoutine,
+            color: "#397e88",
+          },
+          {
+            key: "amrap",
+            title: "AMRAP corto",
+            tag: "12 MIN · A TU RITMO",
+            icon: "timer" as const,
+            routine: amrapTemplate(orientation, 12, profile.equipment),
+            color: "#7657a8",
+          },
+        ]
+      : [];
   function savePlan(next: WeeklyPlan) {
     const key = `plan:${next.input.orientation}:${next.input.week}`;
     const old = storage.readSetting<WeeklyPlan>(owner, key);
@@ -533,32 +576,26 @@ function Main() {
                 onPress={() => setSession(active.session)}
               />
             )}
-            {orientation !== "free" && profile && todayRoutine && (
-              <TodayWorkout
-                routine={todayRoutine}
-                sessionsThisWeek={sessionsThisWeek}
-                streak={currentTrainingStreak(rows.map((row) => row.session))}
-                onStart={() => start(todayRoutine)}
-                onPlan={() => setShowPlan((value) => !value)}
-                onAdjust={() => setTodayMenu(true)}
-              />
+            {!!trainingChoices.length && (
+              <TrainingCarousel choices={trainingChoices} onStart={start} />
             )}
-            {orientation !== "free" && profile && (
-              <View style={styles.quickCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.eyebrow}>ALTERNATIVA DEL DÍA</Text>
-                  <Text style={styles.quickTitle}>AMRAP corto</Text>
-                  <Text style={styles.quickMuted}>
-                    12 minutos a ritmo sostenible.
+            {!!trainingChoices.length && (
+              <View style={styles.todaySummary}>
+                <View>
+                  <Text style={styles.summaryNumber}>{sessionsThisWeek}</Text>
+                  <Text style={styles.summaryLabel}>ESTA SEMANA</Text>
+                </View>
+                <View>
+                  <Text style={styles.summaryNumber}>
+                    {currentTrainingStreak(rows.map((row) => row.session))}
                   </Text>
+                  <Text style={styles.summaryLabel}>RACHA ACTUAL</Text>
                 </View>
                 <Pressable
-                  style={styles.quickAction}
-                  onPress={() =>
-                    start(amrapTemplate(orientation, 12, profile.equipment))
-                  }
+                  onPress={() => setTodayMenu(true)}
+                  style={styles.summaryAction}
                 >
-                  <Text style={styles.quickActionText}>Empezar</Text>
+                  <Text style={styles.summaryActionText}>Opciones</Text>
                 </Pressable>
               </View>
             )}
@@ -1028,7 +1065,7 @@ function Main() {
         isPresented={todayMenu}
         onDismiss={() => setTodayMenu(false)}
         showDragIndicator
-        snapPoints={[{ height: 300 }]}
+        snapPoints={[{ height: 380 }]}
         containerColor="#f6f7f1"
       >
         <View style={styles.sheetContent}>
@@ -1043,6 +1080,18 @@ function Main() {
           >
             <Text style={styles.sheetActionText}>
               Cambiar perfil o equipamiento
+            </Text>
+            <Text style={styles.sheetArrow}>›</Text>
+          </Pressable>
+          <Pressable
+            style={styles.sheetAction}
+            onPress={() => {
+              setShowPlan((value) => !value);
+              setTodayMenu(false);
+            }}
+          >
+            <Text style={styles.sheetActionText}>
+              {showPlan ? "Ocultar plan completo" : "Ver plan completo"}
             </Text>
             <Text style={styles.sheetArrow}>›</Text>
           </Pressable>
@@ -1346,6 +1395,37 @@ const styles = StyleSheet.create({
   quickActionText: { fontSize: 14, fontWeight: "800", color: "#173e34" },
   quickTitle: { fontSize: 21, fontWeight: "800", color: "white" },
   quickMuted: { fontSize: 12, lineHeight: 18, color: "#c3d0c7" },
+  todaySummary: {
+    minHeight: 92,
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: "#e8eddf",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  summaryNumber: {
+    fontSize: 29,
+    lineHeight: 32,
+    fontWeight: "900",
+    color: "#173e34",
+  },
+  summaryLabel: {
+    fontSize: 8,
+    letterSpacing: 0.8,
+    fontWeight: "900",
+    color: "#6a7c70",
+  },
+  summaryAction: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 15,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryActionText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
   profileCard: {
     backgroundColor: "white",
     borderRadius: 22,
