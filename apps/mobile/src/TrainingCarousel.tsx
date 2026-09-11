@@ -146,12 +146,14 @@ export function TrainingCarousel({
         isPresented={preview !== null}
         onDismiss={() => setPreview(null)}
         showDragIndicator
-        snapPoints={[{ height: 650 }]}
-        containerColor="#f6f7f1"
+        snapPoints={[{ height: 690 }]}
+        containerColor="#17211d"
       >
         {preview && (
           <View style={s.sheet}>
-            <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+            <View style={s.sheetTag}>
+              <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+            </View>
             <Text style={s.sheetTitle}>{preview.title}</Text>
             <Text style={s.sheetMeta}>
               ≈ {preview.routine.estimatedMinutes} min ·{" "}
@@ -261,27 +263,34 @@ const s = StyleSheet.create({
   changeRoutineText: { color: "#62766a", fontSize: 11 },
   changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
   sheet: { flex: 1, padding: 22, paddingTop: 8, gap: 8 },
+  sheetTag: {
+    alignSelf: "flex-start",
+    borderRadius: 7,
+    backgroundColor: "#c8ff63",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   sheetEyebrow: {
-    color: "#6b8073",
+    color: "#173e34",
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 1.4,
   },
   sheetTitle: {
-    color: "#173e34",
+    color: "white",
     fontFamily: displayFont,
     fontSize: 33,
     lineHeight: 37,
     fontWeight: "900",
   },
-  sheetMeta: { color: "#61766a", fontSize: 13, marginBottom: 6 },
+  sheetMeta: { color: "#b8c7bd", fontSize: 13, marginBottom: 6 },
   sheetList: { flex: 1 },
   sheetListContent: { gap: 15, paddingBottom: 12 },
   sheetBlock: {
-    borderRadius: 19,
-    padding: 15,
-    gap: 9,
-    backgroundColor: "white",
+    borderRadius: 18,
+    padding: 14,
+    gap: 8,
+    backgroundColor: "#f8f9f4",
     borderWidth: 1,
     borderColor: "#e1e7dd",
   },
