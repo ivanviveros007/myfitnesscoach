@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
@@ -43,6 +44,7 @@ export function TrainingCarousel({
 }) {
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
   const [preview, setPreview] = useState<Choice | null>(null);
+  const { width: screenWidth } = useWindowDimensions();
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
   if (!current) return null;
@@ -150,7 +152,7 @@ export function TrainingCarousel({
         containerColor="#17211d"
       >
         {preview && (
-          <View style={s.sheet}>
+          <View style={[s.sheet, { width: Math.max(280, screenWidth - 32) }]}>
             <View style={s.sheetTag}>
               <Text style={s.sheetEyebrow}>{preview.tag}</Text>
             </View>
@@ -264,8 +266,7 @@ const s = StyleSheet.create({
   changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
   sheet: {
     flex: 1,
-    width: "100%",
-    alignSelf: "stretch",
+    alignSelf: "center",
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 10,

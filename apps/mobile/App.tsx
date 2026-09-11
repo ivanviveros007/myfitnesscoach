@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -122,6 +123,7 @@ export default function App() {
 }
 function Main() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const [account, setAccount] = useState<api.Account | null>(null),
     [ready, setReady] = useState(false),
     [orientation, setOrientation] = useState<Orientation>("padel");
@@ -1084,7 +1086,12 @@ function Main() {
         snapPoints={[{ height: 380 }]}
         containerColor="#17211d"
       >
-        <View style={styles.sheetContent}>
+        <View
+          style={[
+            styles.sheetContent,
+            { width: Math.max(280, screenWidth - 32) },
+          ]}
+        >
           <Text style={styles.sheetEyebrow}>SESIÓN DE HOY</Text>
           <Text style={styles.sheetTitle}>¿Querés ajustar algo?</Text>
           <Pressable
@@ -1143,7 +1150,12 @@ function Main() {
               swapWithoutEquipment ? "bodyweight" : profile?.equipment,
             );
             return (
-              <View style={styles.sheetContent}>
+              <View
+                style={[
+                  styles.sheetContent,
+                  { width: Math.max(280, screenWidth - 32) },
+                ]}
+              >
                 <Text style={styles.sheetEyebrow}>CAMBIAR MOVIMIENTO</Text>
                 <Text style={styles.sheetTitle}>{current.exercise.name}</Text>
                 <Text style={styles.sheetBody}>
@@ -1539,8 +1551,7 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: 17, fontWeight: "700", color: "#214d3e" },
   sheetContent: {
-    width: "100%",
-    alignSelf: "stretch",
+    alignSelf: "center",
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 26,
@@ -1562,7 +1573,6 @@ const styles = StyleSheet.create({
   },
   sheetBody: { fontSize: 14, lineHeight: 20, color: "#b8c7bd" },
   sheetAction: {
-    width: "100%",
     alignSelf: "stretch",
     minHeight: 62,
     paddingHorizontal: 17,
