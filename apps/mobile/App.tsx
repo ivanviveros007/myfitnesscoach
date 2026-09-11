@@ -1539,6 +1539,8 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: 17, fontWeight: "700", color: "#214d3e" },
   sheetContent: {
+    width: "100%",
+    alignSelf: "stretch",
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 26,
@@ -1551,6 +1553,7 @@ const styles = StyleSheet.create({
     color: "#c8ff63",
   },
   sheetTitle: {
+    alignSelf: "stretch",
     fontSize: 27,
     lineHeight: 32,
     fontWeight: "900",
@@ -1559,6 +1562,8 @@ const styles = StyleSheet.create({
   },
   sheetBody: { fontSize: 14, lineHeight: 20, color: "#b8c7bd" },
   sheetAction: {
+    width: "100%",
+    alignSelf: "stretch",
     minHeight: 62,
     paddingHorizontal: 17,
     borderRadius: 18,
