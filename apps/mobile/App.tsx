@@ -27,6 +27,7 @@ import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { TodayWorkout } from "./src/TodayWorkout";
+import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import {
   exercises,
   orientations,
@@ -124,7 +125,7 @@ function Main() {
   const [account, setAccount] = useState<api.Account | null>(null),
     [ready, setReady] = useState(false),
     [orientation, setOrientation] = useState<Orientation>("padel");
-  const [tab, setTab] = useState<"today" | "history" | "account">("today"),
+  const [tab, setTab] = useState<AppTab>("today"),
     [session, setSession] = useState<Session | null>(null),
     [selected, setSelected] = useState<string[]>([]);
   const [detail, setDetail] = useState<Exercise | null>(null),
@@ -1022,30 +1023,7 @@ function Main() {
           {count ? ` · ${count} cambios pendientes` : ""}
         </Text>
       </ScrollView>
-      <View style={styles.nav}>
-        {(
-          [
-            ["today", "Entrenar"],
-            ["history", "Rendimiento"],
-            ["account", "Perfil"],
-          ] as const
-        ).map(([key, label]) => (
-          <Pressable
-            key={key}
-            onPress={() => setTab(key)}
-            style={styles.navItem}
-          >
-            <Text
-              style={[
-                styles.navText,
-                tab === key && { color: "#143f37", fontWeight: "800" },
-              ]}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <FloatingTabs value={tab} onChange={setTab} />
       <BottomSheet
         isPresented={todayMenu}
         onDismiss={() => setTodayMenu(false)}
@@ -1449,19 +1427,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8ede5",
   },
   sync: { fontSize: 11, lineHeight: 17, color: "#778379", textAlign: "center" },
-  nav: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8dd",
-    paddingVertical: 16,
-  },
-  navItem: {
-    flex: 1,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  navText: { color: "#68796e", fontSize: 15 },
   backBar: {
     paddingHorizontal: 22,
     paddingVertical: 8,
