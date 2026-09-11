@@ -759,7 +759,7 @@ function Main() {
                       style={styles.swapButton}
                     >
                       <Text style={styles.swapButtonText}>
-                        Cambiar ejercicio ·•••
+                        ↻ Reemplazar este ejercicio
                       </Text>
                     </Pressable>
                   )}

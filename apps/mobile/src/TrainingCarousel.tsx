@@ -39,6 +39,10 @@ export function TrainingCarousel({
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
   if (!current) return null;
+  const selectNext = () => {
+    const index = choices.findIndex((choice) => choice.key === current.key);
+    setSelected(choices[(index + 1) % choices.length]?.key ?? current.key);
+  };
   return (
     <View style={s.section}>
       <View>
@@ -102,6 +106,26 @@ export function TrainingCarousel({
       </ScrollView>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Cambiar rutina propuesta"
+        onPress={selectNext}
+        style={({ pressed }) => [s.changeRoutine, pressed && s.cardPressed]}
+      >
+        <SymbolView
+          name="arrow.trianglehead.2.clockwise.rotate.90"
+          size={18}
+          tintColor="#173e34"
+          weight="bold"
+        />
+        <View style={s.changeRoutineCopy}>
+          <Text style={s.changeRoutineTitle}>Cambiar rutina</Text>
+          <Text style={s.changeRoutineText}>
+            Ver otra propuesta para entrenar hoy
+          </Text>
+        </View>
+        <Text style={s.changeRoutineArrow}>›</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
         onPress={() => onStart(current.routine)}
         style={({ pressed }) => [s.cta, pressed && s.cardPressed]}
       >
@@ -154,6 +178,20 @@ const s = StyleSheet.create({
   },
   cardActive: { borderColor: "#c8ff63", transform: [{ translateY: -3 }] },
   cardPressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
+  changeRoutine: {
+    minHeight: 64,
+    marginHorizontal: 22,
+    borderRadius: 19,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#e8eddf",
+  },
+  changeRoutineCopy: { flex: 1, gap: 2 },
+  changeRoutineTitle: { color: "#173e34", fontSize: 15, fontWeight: "900" },
+  changeRoutineText: { color: "#62766a", fontSize: 11 },
+  changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
   image: { flex: 1, margin: -17, padding: 17, justifyContent: "space-between" },
   cardImage: { borderRadius: 22 },
   imageShade: {
