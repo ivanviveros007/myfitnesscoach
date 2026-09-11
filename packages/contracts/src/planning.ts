@@ -138,7 +138,12 @@ export function makeWeeklyPlan(
     );
   const routines = days.map((day, index): Routine => {
     const hard = main.includes(day) && input.readiness === "normal";
-    const strengthSets = hard ? (input.minutes === 60 ? 3 : 2) : 1;
+    const strengthSets =
+      input.readiness === "tired" || main.length < 2
+        ? 1
+        : hard && input.minutes === 60
+          ? 3
+          : 2;
     const secondary = index >= 2;
     const power = hard && profile.experience === "regular" && profile.jumpReady;
     const items: Prescription[] = [];

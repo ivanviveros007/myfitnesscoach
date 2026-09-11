@@ -805,7 +805,16 @@ function Main() {
                   </Text>
                   {item.series.map((serie, n) => (
                     <View key={n} style={styles.series}>
-                      <Text style={styles.body}>Serie {n + 1}</Text>
+                      <Text style={styles.body}>
+                        {session.routine.trainingMode === "amrap" &&
+                        p.block !== "warmup"
+                          ? "Por ronda"
+                          : p.block === "warmup"
+                            ? p.sets === 1
+                              ? "Preparación"
+                              : `Ronda ${n + 1}`
+                            : `Serie ${n + 1}`}
+                      </Text>
                       <TextInput
                         editable={!session.finishedAt}
                         accessibilityLabel={`${p.unit === "seconds" ? "Segundos" : "Repeticiones"} serie ${n + 1}`}
