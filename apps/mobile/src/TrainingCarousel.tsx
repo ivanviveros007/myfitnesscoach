@@ -262,7 +262,15 @@ const s = StyleSheet.create({
   changeRoutineTitle: { color: "#173e34", fontSize: 15, fontWeight: "900" },
   changeRoutineText: { color: "#62766a", fontSize: 11 },
   changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
-  sheet: { flex: 1, padding: 22, paddingTop: 8, gap: 8 },
+  sheet: {
+    flex: 1,
+    width: "100%",
+    alignSelf: "stretch",
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 8,
+  },
   sheetTag: {
     alignSelf: "flex-start",
     borderRadius: 7,
@@ -284,9 +292,11 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   sheetMeta: { color: "#b8c7bd", fontSize: 13, marginBottom: 6 },
-  sheetList: { flex: 1 },
+  sheetList: { flex: 1, width: "100%", alignSelf: "stretch" },
   sheetListContent: { gap: 15, paddingBottom: 12 },
   sheetBlock: {
+    width: "100%",
+    alignSelf: "stretch",
     borderRadius: 18,
     padding: 14,
     gap: 8,
@@ -310,6 +320,8 @@ const s = StyleSheet.create({
   sheetExerciseName: { flex: 1, color: "#284a40", fontSize: 14 },
   sheetPrescription: { color: "#708277", fontSize: 11, textAlign: "right" },
   sheetStart: {
+    width: "100%",
+    alignSelf: "stretch",
     minHeight: 62,
     borderRadius: 20,
     backgroundColor: "#c8ff63",
