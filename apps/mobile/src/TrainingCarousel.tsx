@@ -11,6 +11,7 @@ import {
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { Routine } from "@myfitnesscoach/contracts";
 
+type CardImage = "padel" | "strength" | "mobility" | "amrap";
 type Choice = {
   key: string;
   title: string;
@@ -18,7 +19,13 @@ type Choice = {
   icon: SymbolViewProps["name"];
   routine: Routine;
   color: string;
-  image?: boolean;
+  image: CardImage;
+};
+const cardImages = {
+  padel: require("../assets/training/padel-conditioning.jpg"),
+  strength: require("../assets/training/strength.jpg"),
+  mobility: require("../assets/training/mobility.jpg"),
+  amrap: require("../assets/training/amrap.jpg"),
 };
 
 export function TrainingCarousel({
@@ -49,7 +56,7 @@ export function TrainingCarousel({
           const active = choice.key === current.key;
           const content = (
             <>
-              {choice.image && <View style={s.imageShade} />}
+              <View style={s.imageShade} />
               <View style={[s.icon, active && s.iconActive]}>
                 <SymbolView
                   name={choice.icon}
@@ -81,18 +88,14 @@ export function TrainingCarousel({
                 pressed && s.cardPressed,
               ]}
             >
-              {choice.image ? (
-                <ImageBackground
-                  source={require("../assets/training/padel-conditioning.jpg")}
-                  resizeMode="cover"
-                  imageStyle={s.cardImage}
-                  style={s.image}
-                >
-                  {content}
-                </ImageBackground>
-              ) : (
-                content
-              )}
+              <ImageBackground
+                source={cardImages[choice.image]}
+                resizeMode="cover"
+                imageStyle={s.cardImage}
+                style={s.image}
+              >
+                {content}
+              </ImageBackground>
             </Pressable>
           );
         })}

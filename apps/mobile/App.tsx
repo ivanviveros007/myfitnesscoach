@@ -228,7 +228,7 @@ function Main() {
             icon: "sparkles" as const,
             routine: todayRoutine,
             color: "#173e34",
-            image: true,
+            image: "padel" as const,
           },
           {
             key: "strength",
@@ -240,6 +240,7 @@ function Main() {
                 candidate.name.includes("Fuerza"),
               ) ?? todayRoutine,
             color: "#ef6d4f",
+            image: "strength" as const,
           },
           {
             key: "mobility",
@@ -250,6 +251,7 @@ function Main() {
               effectivePlan.routines[effectivePlan.routines.length - 1] ??
               todayRoutine,
             color: "#397e88",
+            image: "mobility" as const,
           },
           {
             key: "amrap",
@@ -258,6 +260,7 @@ function Main() {
             icon: "timer" as const,
             routine: amrapTemplate(orientation, 12, profile.equipment),
             color: "#7657a8",
+            image: "amrap" as const,
           },
         ]
       : [];
