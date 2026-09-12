@@ -150,14 +150,15 @@ export function TrainingCarousel({
         isPresented={preview !== null}
         onDismiss={() => setPreview(null)}
         showDragIndicator
-        snapPoints={[{ fraction: 0.9 }]}
+        snapPoints={["full"]}
         containerColor="#17211d"
       >
         {preview && (
           <RNHostView
             style={{
               width: screenWidth,
-              height: Math.round(screenHeight * 0.86),
+              height: Math.max(560, screenHeight - Math.max(insets.top, 12)),
+              backgroundColor: "#17211d",
             }}
           >
             <View
