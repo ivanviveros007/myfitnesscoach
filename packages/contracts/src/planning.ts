@@ -191,7 +191,7 @@ export function makeWeeklyPlan(
       );
     add(
       "shuffle",
-      input.orientation === "fitness" ? "warmup" : "transfer",
+      "transfer",
       hard ? 2 : 1,
       20,
       60,
@@ -291,18 +291,21 @@ export function makeWeeklyPlan(
     }
     const groups: {
       section: WorkoutBlock["section"];
+      goal: NonNullable<WorkoutBlock["goal"]>;
       title: string;
       purpose: string;
       kinds: Prescription["block"][];
     }[] = [
       {
         section: "warmup",
+        goal: "warmup",
         title: "Warm up",
         purpose: "Movilidad y preparación",
         kinds: ["warmup"],
       },
       {
         section: "block-1",
+        goal: power ? "power" : "transfer",
         title: power
           ? "Potencia y transferencia"
           : "Coordinación y transferencia",
@@ -311,12 +314,14 @@ export function makeWeeklyPlan(
       },
       {
         section: "block-2",
+        goal: secondary ? "full-body" : "strength",
         title: "Fuerza principal",
         purpose: "Patrones globales de fuerza",
         kinds: ["strength"],
       },
       {
         section: "block-3",
+        goal: "mobility",
         title: "Estabilidad y movilidad",
         purpose: "Control y vuelta a la calma",
         kinds: ["stability", "flexibility"],
@@ -327,6 +332,7 @@ export function makeWeeklyPlan(
         id: `week-${input.week}-${input.orientation}-${day}-${group.section}`,
         position,
         section: group.section,
+        goal: group.goal,
         title: group.title,
         purpose: group.purpose,
         format: "sets" as const,

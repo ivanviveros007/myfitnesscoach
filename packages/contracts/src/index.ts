@@ -148,10 +148,27 @@ export const blockFormatSchema = z.enum([
   "emom",
   "for-time",
 ]);
+export const blockGoalSchema = z.enum([
+  "warmup",
+  "power",
+  "strength",
+  "full-body",
+  "hypertrophy",
+  "mobility",
+  "upper-body",
+  "legs",
+  "transfer",
+  "stability",
+  "conditioning",
+  "recovery",
+]);
+export type BlockGoal = z.infer<typeof blockGoalSchema>;
 export const workoutBlockSchema = z.object({
   id: z.string().min(1).max(100),
   position: z.number().int().min(0).max(3),
   section: z.enum(["warmup", "block-1", "block-2", "block-3"]),
+  // Optional while previously-synced sessions are migrated lazily on read.
+  goal: blockGoalSchema.optional(),
   title: z.string().min(1).max(120),
   purpose: z.string().min(1).max(240),
   format: blockFormatSchema,
@@ -192,45 +209,111 @@ export function template(
   orientation: Orientation,
   selected: string[] = [],
 ): Routine {
-  const ids =
-    orientation === "free"
-      ? selected
-      : orientation === "padel"
-        ? ["bird-dog", "squat", "bridge"]
-        : orientation === "football"
-          ? ["squat", "bridge", "bird-dog"]
-          : ["bridge", "squat", "bird-dog"];
-  return {
+  const make = (
+    id: string,
+    block: NonNullable<Prescription["block"]>,
+    sets = 2,
+    reps = 8,
+  ): Prescription => ({
+    exercise: exercises.find((exercise) => exercise.id === id)!,
+    block,
+    sets,
+    reps,
+    unit: ["calf-stretch", "child", "shuffle"].includes(id)
+      ? "seconds"
+      : "reps",
+    perSide: ["bird-dog", "calf-stretch", "leg-swing", "dumbbell-row"].includes(
+      id,
+    ),
+    restSeconds: id === "jump" ? 120 : block === "warmup" ? 15 : 60,
+  });
+  const warmup = [make("leg-swing", "warmup", 1, 8)];
+  const athletic = [make("shuffle", "transfer", 2, 20)];
+  const defaults =
+    orientation === "football"
+      ? ["squat", "bridge", "incline-push"]
+      : orientation === "fitness"
+        ? ["bridge", "squat", "incline-push"]
+        : ["squat", "bridge", "incline-push"];
+  const reserved = new Set([
+    "leg-swing",
+    "shuffle",
+    "bird-dog",
+    "calf-stretch",
+    "child",
+  ]);
+  const chosen = (orientation === "free" ? selected : defaults)
+    .filter((id) => !reserved.has(id))
+    .slice(0, 6);
+  const strength = (chosen.length ? chosen : defaults).map((id) =>
+    make(id, "strength", 2, 10),
+  );
+  const mobility = [
+    make("bird-dog", "stability", 1, 6),
+    make("calf-stretch", "flexibility", 1, 25),
+    make("child", "flexibility", 1, 30),
+  ];
+  const blocks: WorkoutBlock[] = [
+    {
+      id: `demo-${orientation}-warmup`,
+      position: 0,
+      section: "warmup",
+      goal: "warmup",
+      title: "Warm Up",
+      purpose: "Entrada en calor y preparación articular",
+      format: "sets",
+      durationMinutes: 5,
+      items: warmup,
+    },
+    {
+      id: `demo-${orientation}-athletic`,
+      position: 1,
+      section: "block-1",
+      goal: "transfer",
+      title: orientation === "fitness" ? "Full Body Activation" : "Transfer",
+      purpose: "Coordinación, desplazamiento y control",
+      format: "sets",
+      durationMinutes: 6,
+      items: athletic,
+    },
+    {
+      id: `demo-${orientation}-strength`,
+      position: 2,
+      section: "block-2",
+      goal: orientation === "free" ? "hypertrophy" : "full-body",
+      title: orientation === "free" ? "Musculación" : "Full Body Strength",
+      purpose: "Trabajo principal de fuerza",
+      format: "sets",
+      durationMinutes: 18,
+      items: strength,
+    },
+    {
+      id: `demo-${orientation}-mobility`,
+      position: 3,
+      section: "block-3",
+      goal: "mobility",
+      title: "Mobility & Stability",
+      purpose: "Control del tronco y recuperación de movilidad",
+      format: "sets",
+      durationMinutes: 8,
+      items: mobility,
+    },
+  ];
+  const items = blocks.flatMap((block) => block.items);
+  return routineSchema.parse({
     id: `demo-${orientation}`,
     name:
       orientation === "free"
         ? "Mi sesión libre"
         : `Base ${orientations[orientation].name}`,
     orientation,
-    items: ids.map((id) => ({
-      exercise: exercises.find((e) => e.id === id)!,
-      sets: 2,
-      reps: ["calf-stretch", "child"].includes(id)
-        ? 25
-        : id === "shuffle"
-          ? 20
-          : id === "jump"
-            ? 3
-            : id === "bird-dog"
-              ? 6
-              : 10,
-      unit: ["calf-stretch", "child", "shuffle"].includes(id)
-        ? "seconds"
-        : "reps",
-      perSide: [
-        "bird-dog",
-        "calf-stretch",
-        "leg-swing",
-        "dumbbell-row",
-      ].includes(id),
-      restSeconds: id === "jump" ? 120 : 60,
-    })),
-  };
+    focus:
+      "Cuatro bloques: preparación, estímulo atlético, fuerza y movilidad.",
+    estimatedMinutes: 37,
+    trainingMode: orientation === "free" ? "free" : "planned",
+    blocks,
+    items,
+  });
 }
 export const seriesSchema = z.object({
   reps: z.number().int().min(0).max(1000),
@@ -320,7 +403,7 @@ export function amrapTemplate(
   durationMinutes: 8 | 12 | 16 | 20 = 12,
   equipment: "bodyweight" | "dumbbells" | "gym" = "gym",
 ): Routine {
-  const warmupItems = ["leg-swing", "squat"].map((id) => {
+  const warmupItems = ["leg-swing"].map((id) => {
     const exercise = exercises.find((candidate) => candidate.id === id)!;
     return {
       exercise,
@@ -332,12 +415,23 @@ export function amrapTemplate(
       effort: "Movimiento controlado para preparar el circuito.",
     };
   });
+  const activationItems: Prescription[] = [
+    {
+      exercise: exercises.find((exercise) => exercise.id === "shuffle")!,
+      block: "transfer",
+      sets: 2,
+      reps: 20,
+      restSeconds: 45,
+      unit: "seconds",
+      effort: "Aumentá el ritmo de forma progresiva sin perder el control.",
+    },
+  ];
   const ids =
     orientation === "padel"
       ? [
-          "shuffle",
           equipment === "bodyweight" ? "squat" : "goblet",
           "incline-push",
+          "bridge",
           "bird-dog",
         ]
       : ["squat", "incline-push", "bridge", "bird-dog"];
@@ -353,7 +447,22 @@ export function amrapTemplate(
       effort: "Ritmo sostenible: mantené la técnica durante todas las rondas.",
     };
   });
-  const items = [...warmupItems, ...mainItems];
+  const recoveryItems: Prescription[] = ["calf-stretch", "child"].map((id) => ({
+    exercise: exercises.find((exercise) => exercise.id === id)!,
+    block: "flexibility",
+    sets: 1,
+    reps: id === "child" ? 30 : 25,
+    restSeconds: 10,
+    unit: "seconds",
+    perSide: id === "calf-stretch",
+    effort: "Respirá con calma y evitá forzar el rango.",
+  }));
+  const items = [
+    ...warmupItems,
+    ...activationItems,
+    ...mainItems,
+    ...recoveryItems,
+  ];
   return {
     id: `amrap-${orientation}-${durationMinutes}`,
     name: `AMRAP · ${durationMinutes} minutos`,
@@ -361,27 +470,51 @@ export function amrapTemplate(
     trainingMode: "amrap",
     focus:
       "Completá tantas rondas de calidad como puedas sin perder la técnica.",
-    estimatedMinutes: durationMinutes + 6,
+    estimatedMinutes: durationMinutes + 14,
     blocks: [
       {
         id: `amrap-${orientation}-${durationMinutes}-warmup`,
         position: 0,
         section: "warmup",
+        goal: "warmup",
         title: "Warm up",
         purpose: "Preparación para el circuito",
         format: "sets",
-        durationMinutes: 6,
+        durationMinutes: 4,
         items: warmupItems,
       },
       {
-        id: `amrap-${orientation}-${durationMinutes}-main`,
+        id: `amrap-${orientation}-${durationMinutes}-activation`,
         position: 1,
         section: "block-1",
+        goal: "power",
+        title: "Power & Transfer",
+        purpose: "Activación atlética antes del bloque principal",
+        format: "intervals",
+        durationMinutes: 4,
+        items: activationItems,
+      },
+      {
+        id: `amrap-${orientation}-${durationMinutes}-main`,
+        position: 2,
+        section: "block-2",
+        goal: "conditioning",
         title: "AMRAP",
         purpose: "Acondicionamiento y fuerza resistente",
         format: "amrap",
         durationMinutes,
         items: mainItems,
+      },
+      {
+        id: `amrap-${orientation}-${durationMinutes}-recovery`,
+        position: 3,
+        section: "block-3",
+        goal: "mobility",
+        title: "Mobility Reset",
+        purpose: "Movilidad y vuelta a la calma",
+        format: "sets",
+        durationMinutes: 6,
+        items: recoveryItems,
       },
     ],
     items,

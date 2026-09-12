@@ -37,6 +37,7 @@ import {
   currentWeek,
   makeWeeklyPlan,
   blocks,
+  routineBlocks,
   amrapTemplate,
   type TrainingProfile,
   type WeeklyPlan,
@@ -498,6 +499,17 @@ function Main() {
       </SafeAreaView>
     );
   const active = rows.find((r) => !r.session.finishedAt);
+  const sessionBlockStarts = new Map<
+    number,
+    ReturnType<typeof routineBlocks>[number]
+  >();
+  if (session) {
+    let firstItem = 0;
+    for (const block of routineBlocks(session.routine)) {
+      sessionBlockStarts.set(firstItem, block);
+      firstItem += block.items.length;
+    }
+  }
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
@@ -741,198 +753,220 @@ function Main() {
             />
             {session.routine.items.map((p, index) => {
               const item = session.items[index];
+              const startingBlock = sessionBlockStarts.get(index);
               const tracksWeight =
                 p.unit !== "seconds" && p.exercise.id !== "jump";
               return (
-                <View style={styles.card} key={p.exercise.id}>
-                  <Text style={styles.eyebrow}>
-                    {String(index + 1).padStart(2, "0")} /{" "}
-                    {p.block ? blocks[p.block] : "Ejercicio"} /{" "}
-                    {labels[item.status]}
-                  </Text>
-                  <Text style={styles.title}>{p.exercise.name}</Text>
-                  {!session.finishedAt && (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        setSwapWithoutEquipment(false);
-                        setSwapIndex(index);
-                      }}
-                      style={styles.swapButton}
-                    >
-                      <Text style={styles.swapButtonText}>
-                        ↻ Reemplazar este ejercicio
+                <React.Fragment key={`${p.exercise.id}-${index}`}>
+                  {startingBlock && (
+                    <View style={styles.workoutBlockHeader}>
+                      <Text style={styles.workoutBlockNumber}>
+                        BLOQUE {startingBlock.position + 1}
                       </Text>
-                    </Pressable>
-                  )}
-                  {p.effort && <Text style={styles.body}>{p.effort}</Text>}
-                  <Button
-                    secondary
-                    title={
-                      expandedExercise === p.exercise.id
-                        ? "Ocultar demostración"
-                        : "Ver demostración"
-                    }
-                    onPress={() =>
-                      setExpandedExercise(
-                        expandedExercise === p.exercise.id
-                          ? null
-                          : p.exercise.id,
-                      )
-                    }
-                  />
-                  {expandedExercise === p.exercise.id && (
-                    <View style={styles.demoPanel}>
-                      <ExerciseDiagram kind={p.exercise.illustration} />
-                      <Text style={styles.body}>{p.exercise.steps[0]}</Text>
-                      <Pressable
-                        onPress={() => {
-                          setDetail(p.exercise);
-                          setVideo(false);
-                        }}
-                        style={styles.guideLink}
-                      >
-                        <Text style={styles.guideLinkText}>
-                          Técnica completa y video →
-                        </Text>
-                      </Pressable>
+                      <Text style={styles.workoutBlockTitle}>
+                        {startingBlock.title}
+                      </Text>
+                      <Text style={styles.workoutBlockPurpose}>
+                        {startingBlock.purpose}
+                      </Text>
                     </View>
                   )}
-                  <Text style={styles.muted}>
-                    Descanso previsto: {p.restSeconds} s{" "}
-                    {tracksWeight
-                      ? "· Peso adicional en kg"
-                      : p.unit === "seconds"
-                        ? "· Tiempo por serie"
-                        : "· Solo peso corporal"}
-                    {(p.perSide ?? p.exercise.id === "bird-dog")
-                      ? " · Repeticiones por lado"
-                      : ""}
-                  </Text>
-                  {item.series.map((serie, n) => (
-                    <View key={n} style={styles.series}>
-                      <Text style={styles.body}>
-                        {session.routine.trainingMode === "amrap" &&
-                        p.block !== "warmup"
-                          ? "Por ronda"
-                          : p.block === "warmup"
-                            ? p.sets === 1
-                              ? "Preparación"
-                              : `Ronda ${n + 1}`
-                            : `Serie ${n + 1}`}
-                      </Text>
-                      <TextInput
-                        editable={!session.finishedAt}
-                        accessibilityLabel={`${p.unit === "seconds" ? "Segundos" : "Repeticiones"} serie ${n + 1}`}
-                        style={styles.number}
-                        keyboardType="number-pad"
-                        value={String(serie.reps)}
-                        onChangeText={(text) => {
-                          if (/^\d{0,3}$/.test(text))
+                  <View style={styles.card}>
+                    <Text style={styles.eyebrow}>
+                      {String(index + 1).padStart(2, "0")} /{" "}
+                      {p.block ? blocks[p.block] : "Ejercicio"} /{" "}
+                      {labels[item.status]}
+                    </Text>
+                    <Text style={styles.title}>{p.exercise.name}</Text>
+                    {!session.finishedAt && (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setSwapWithoutEquipment(false);
+                          setSwapIndex(index);
+                        }}
+                        style={styles.swapButton}
+                      >
+                        <Text style={styles.swapButtonText}>
+                          ↻ Reemplazar este ejercicio
+                        </Text>
+                      </Pressable>
+                    )}
+                    {p.effort && <Text style={styles.body}>{p.effort}</Text>}
+                    <Button
+                      secondary
+                      title={
+                        expandedExercise === p.exercise.id
+                          ? "Ocultar demostración"
+                          : "Ver demostración"
+                      }
+                      onPress={() =>
+                        setExpandedExercise(
+                          expandedExercise === p.exercise.id
+                            ? null
+                            : p.exercise.id,
+                        )
+                      }
+                    />
+                    {expandedExercise === p.exercise.id && (
+                      <View style={styles.demoPanel}>
+                        <ExerciseDiagram kind={p.exercise.illustration} />
+                        <Text style={styles.body}>{p.exercise.steps[0]}</Text>
+                        <Pressable
+                          onPress={() => {
+                            setDetail(p.exercise);
+                            setVideo(false);
+                          }}
+                          style={styles.guideLink}
+                        >
+                          <Text style={styles.guideLinkText}>
+                            Técnica completa y video →
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                    <Text style={styles.muted}>
+                      Descanso previsto: {p.restSeconds} s{" "}
+                      {tracksWeight
+                        ? "· Peso adicional en kg"
+                        : p.unit === "seconds"
+                          ? "· Tiempo por serie"
+                          : "· Solo peso corporal"}
+                      {(p.perSide ?? p.exercise.id === "bird-dog")
+                        ? " · Repeticiones por lado"
+                        : ""}
+                    </Text>
+                    {item.series.map((serie, n) => (
+                      <View key={n} style={styles.series}>
+                        <Text style={styles.body}>
+                          {session.routine.trainingMode === "amrap" &&
+                          p.block !== "warmup"
+                            ? "Por ronda"
+                            : p.block === "warmup"
+                              ? p.sets === 1
+                                ? "Preparación"
+                                : `Ronda ${n + 1}`
+                              : `Serie ${n + 1}`}
+                        </Text>
+                        <TextInput
+                          editable={!session.finishedAt}
+                          accessibilityLabel={`${p.unit === "seconds" ? "Segundos" : "Repeticiones"} serie ${n + 1}`}
+                          style={styles.number}
+                          keyboardType="number-pad"
+                          value={String(serie.reps)}
+                          onChangeText={(text) => {
+                            if (/^\d{0,3}$/.test(text))
+                              updateItem(index, (i) => ({
+                                ...i,
+                                series: i.series.map((s, j) =>
+                                  j === n ? { ...s, reps: Number(text) } : s,
+                                ),
+                              }));
+                          }}
+                        />
+                        <Text style={styles.muted}>
+                          {p.unit === "seconds" ? "s" : "rep."}
+                        </Text>
+                        {tracksWeight && (
+                          <>
+                            <TextInput
+                              editable={!session.finishedAt}
+                              accessibilityLabel={`Peso serie ${n + 1}`}
+                              style={styles.number}
+                              keyboardType="decimal-pad"
+                              value={String(serie.weight)}
+                              onChangeText={(text) => {
+                                const value = Number(text.replace(",", "."));
+                                if (
+                                  Number.isFinite(value) &&
+                                  value >= 0 &&
+                                  value <= 1000
+                                )
+                                  updateItem(index, (i) => ({
+                                    ...i,
+                                    series: i.series.map((s, j) =>
+                                      j === n ? { ...s, weight: value } : s,
+                                    ),
+                                  }));
+                              }}
+                            />
+                            <Text style={styles.muted}>kg</Text>
+                          </>
+                        )}
+                        <Pressable
+                          disabled={!!session.finishedAt}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: serie.done }}
+                          accessibilityLabel={`Completar serie ${n + 1}`}
+                          style={[
+                            styles.check,
+                            serie.done && styles.chipActive,
+                          ]}
+                          onPress={() =>
+                            updateItem(index, (i) => {
+                              const series = i.series.map((s, j) =>
+                                j === n ? { ...s, done: !s.done } : s,
+                              );
+                              return {
+                                ...i,
+                                series,
+                                status: exerciseStatus(series),
+                              };
+                            })
+                          }
+                        >
+                          <Text
+                            style={{ color: serie.done ? "white" : "#143f37" }}
+                          >
+                            {serie.done ? "✓" : "○"}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                    {!session.finishedAt && (
+                      <View style={styles.wrap}>
+                        <Button
+                          secondary
+                          title="Completar ejercicio"
+                          onPress={() =>
                             updateItem(index, (i) => ({
                               ...i,
-                              series: i.series.map((s, j) =>
-                                j === n ? { ...s, reps: Number(text) } : s,
-                              ),
-                            }));
-                        }}
-                      />
-                      <Text style={styles.muted}>
-                        {p.unit === "seconds" ? "s" : "rep."}
-                      </Text>
-                      {tracksWeight && (
-                        <>
-                          <TextInput
-                            editable={!session.finishedAt}
-                            accessibilityLabel={`Peso serie ${n + 1}`}
-                            style={styles.number}
-                            keyboardType="decimal-pad"
-                            value={String(serie.weight)}
-                            onChangeText={(text) => {
-                              const value = Number(text.replace(",", "."));
-                              if (
-                                Number.isFinite(value) &&
-                                value >= 0 &&
-                                value <= 1000
-                              )
-                                updateItem(index, (i) => ({
-                                  ...i,
-                                  series: i.series.map((s, j) =>
-                                    j === n ? { ...s, weight: value } : s,
-                                  ),
-                                }));
-                            }}
-                          />
-                          <Text style={styles.muted}>kg</Text>
-                        </>
-                      )}
-                      <Pressable
-                        disabled={!!session.finishedAt}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: serie.done }}
-                        accessibilityLabel={`Completar serie ${n + 1}`}
-                        style={[styles.check, serie.done && styles.chipActive]}
-                        onPress={() =>
-                          updateItem(index, (i) => {
-                            const series = i.series.map((s, j) =>
-                              j === n ? { ...s, done: !s.done } : s,
-                            );
-                            return {
+                              status: "completed",
+                              series: i.series.map((s) => ({
+                                ...s,
+                                done: true,
+                              })),
+                            }))
+                          }
+                        />
+                        <Button
+                          secondary
+                          title="Omitir"
+                          onPress={() =>
+                            updateItem(index, (i) => ({
                               ...i,
-                              series,
-                              status: exerciseStatus(series),
-                            };
-                          })
-                        }
-                      >
-                        <Text
-                          style={{ color: serie.done ? "white" : "#143f37" }}
-                        >
-                          {serie.done ? "✓" : "○"}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ))}
-                  {!session.finishedAt && (
-                    <View style={styles.wrap}>
-                      <Button
-                        secondary
-                        title="Completar ejercicio"
-                        onPress={() =>
-                          updateItem(index, (i) => ({
-                            ...i,
-                            status: "completed",
-                            series: i.series.map((s) => ({ ...s, done: true })),
-                          }))
-                        }
-                      />
-                      <Button
-                        secondary
-                        title="Omitir"
-                        onPress={() =>
-                          updateItem(index, (i) => ({
-                            ...i,
-                            status: i.series.some((s) => s.done)
-                              ? "partial"
-                              : "skipped",
-                          }))
-                        }
-                      />
-                    </View>
-                  )}
-                  <TextInput
-                    editable={!session.finishedAt}
-                    multiline
-                    accessibilityLabel="Comentario del ejercicio"
-                    placeholder="¿Cómo te fue? Podés dejar un comentario…"
-                    style={styles.input}
-                    value={item.comment}
-                    maxLength={2000}
-                    onChangeText={(comment) =>
-                      updateItem(index, (i) => ({ ...i, comment }))
-                    }
-                  />
-                </View>
+                              status: i.series.some((s) => s.done)
+                                ? "partial"
+                                : "skipped",
+                            }))
+                          }
+                        />
+                      </View>
+                    )}
+                    <TextInput
+                      editable={!session.finishedAt}
+                      multiline
+                      accessibilityLabel="Comentario del ejercicio"
+                      placeholder="¿Cómo te fue? Podés dejar un comentario…"
+                      style={styles.input}
+                      value={item.comment}
+                      maxLength={2000}
+                      onChangeText={(comment) =>
+                        updateItem(index, (i) => ({ ...i, comment }))
+                      }
+                    />
+                  </View>
+                </React.Fragment>
               );
             })}
             {!session.finishedAt && (
@@ -1366,6 +1400,26 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: "#214d3e" },
   chipText: { fontSize: 14, color: "#355a49", fontWeight: "600" },
+  workoutBlockHeader: {
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    gap: 3,
+    backgroundColor: "#173e34",
+  },
+  workoutBlockNumber: {
+    color: "#c8ff63",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
+  workoutBlockTitle: {
+    color: "white",
+    fontSize: 23,
+    lineHeight: 27,
+    fontWeight: "900",
+  },
+  workoutBlockPurpose: { color: "#b9c8be", fontSize: 12, lineHeight: 17 },
   card: {
     backgroundColor: "#fff",
     padding: 20,
