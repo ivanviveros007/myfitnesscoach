@@ -254,7 +254,7 @@ export function PlanOverview({
 }
 
 const displayFont = Platform.select({
-  ios: "Arial Rounded MT Bold",
+  ios: "Avenir Next Condensed",
   android: "sans-serif-condensed",
   default: undefined,
 });
@@ -290,12 +290,15 @@ const s = StyleSheet.create({
     color: "#42674e",
   },
   card: {
-    backgroundColor: "white",
-    borderRadius: 22,
-    padding: 18,
+    backgroundColor: "#f9f9f7",
+    borderRadius: 26,
+    padding: 16,
     gap: 14,
-    borderWidth: 1,
-    borderColor: "#e1e9de",
+    shadowColor: "#15231d",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    elevation: 3,
   },
   noteCard: {
     backgroundColor: "#e8efe2",

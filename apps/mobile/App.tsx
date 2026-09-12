@@ -6,6 +6,7 @@ import {
   AppState,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -1341,14 +1342,22 @@ function Main() {
     </SafeAreaView>
   );
 }
+const displayFont = Platform.select({
+  ios: "Avenir Next Condensed",
+  android: "sans-serif-condensed",
+  default: undefined,
+});
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f6f7f1" },
+  screen: { flex: 1, backgroundColor: "#efefed" },
   header: {
-    paddingHorizontal: 22,
-    minHeight: 68,
+    paddingHorizontal: 18,
+    minHeight: 72,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: "#f8f8f6",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#d9d9d5",
   },
   brandMark: {
     width: 36,
@@ -1382,7 +1391,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3c966e",
   },
   statusDotOffline: { backgroundColor: "#c59044" },
-  content: { padding: 22, gap: 18, paddingBottom: 40 },
+  content: { padding: 18, gap: 18, paddingBottom: 40 },
   eyebrow: {
     fontSize: 11,
     letterSpacing: 1.5,
@@ -1390,10 +1399,11 @@ const styles = StyleSheet.create({
     color: "#647d6d",
   },
   hero: {
-    fontSize: 35,
-    lineHeight: 41,
-    fontWeight: "700",
-    letterSpacing: -1.2,
+    fontFamily: displayFont,
+    fontSize: 43,
+    lineHeight: 45,
+    fontWeight: "900",
+    letterSpacing: -1.8,
     color: "#173e34",
   },
   wrap: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
@@ -1406,7 +1416,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#214d3e" },
   chipText: { fontSize: 14, color: "#355a49", fontWeight: "600" },
   workoutBlockHeader: {
-    borderRadius: 22,
+    borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 15,
     gap: 3,
@@ -1419,19 +1429,23 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
   },
   workoutBlockTitle: {
+    fontFamily: displayFont,
     color: "white",
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: 28,
+    lineHeight: 30,
     fontWeight: "900",
   },
   workoutBlockPurpose: { color: "#b9c8be", fontSize: 12, lineHeight: 17 },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#fafaf8",
     padding: 20,
     borderRadius: 24,
     gap: 15,
-    borderWidth: 1,
-    borderColor: "#e8ece3",
+    shadowColor: "#101915",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
   },
   demoPanel: {
     backgroundColor: "#f2f5ee",
@@ -1493,6 +1507,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryNumber: {
+    fontFamily: displayFont,
     fontSize: 29,
     lineHeight: 32,
     fontWeight: "900",
@@ -1539,7 +1554,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   profileArrowText: { fontSize: 32, color: "#315d4d" },
-  title: { fontSize: 21, fontWeight: "700", color: "#193f35" },
+  title: {
+    fontFamily: displayFont,
+    fontSize: 25,
+    lineHeight: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    color: "#193f35",
+  },
   body: { fontSize: 15, lineHeight: 23, color: "#3f554b" },
   muted: { fontSize: 12, lineHeight: 18, color: "#778379" },
   preview: {
@@ -1623,6 +1645,7 @@ const styles = StyleSheet.create({
     color: "#c8ff63",
   },
   sheetTitle: {
+    fontFamily: displayFont,
     alignSelf: "stretch",
     fontSize: 27,
     lineHeight: 32,

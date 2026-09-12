@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import {
+  Platform,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 import { exercises, type Exercise } from "@myfitnesscoach/contracts";
 import { Button } from "./AppButton";
 
@@ -91,18 +98,18 @@ const s = StyleSheet.create({
     color: "#718077",
   },
   hero: {
-    fontSize: 38,
-    fontWeight: "800",
-    letterSpacing: -1,
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 44,
+    lineHeight: 46,
+    fontWeight: "900",
+    letterSpacing: -1.4,
     color: "#173e34",
   },
   body: { fontSize: 15, lineHeight: 22, color: "#526257" },
   search: {
     minHeight: 54,
     borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "#dce4d8",
-    backgroundColor: "white",
+    backgroundColor: "#fafaf8",
     paddingHorizontal: 16,
     fontSize: 15,
     color: "#173e34",
@@ -116,16 +123,24 @@ const s = StyleSheet.create({
   selectionText: { fontSize: 18, fontWeight: "800", color: "#173e34" },
   card: {
     minHeight: 116,
-    backgroundColor: "white",
-    borderRadius: 20,
+    backgroundColor: "#fafaf8",
+    borderRadius: 24,
     padding: 16,
     flexDirection: "row",
     gap: 12,
-    borderWidth: 1,
-    borderColor: "#e1e9de",
+    shadowColor: "#102b24",
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
   },
   copy: { flex: 1, gap: 4 },
-  title: { fontSize: 18, fontWeight: "800", color: "#173e34" },
+  title: {
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 21,
+    fontWeight: "900",
+    color: "#173e34",
+  },
   meta: { fontSize: 12, color: "#748178" },
   link: { fontSize: 13, fontWeight: "700", color: "#315d4d", marginTop: 5 },
   actions: { gap: 8 },

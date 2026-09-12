@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { Platform, View, Text, StyleSheet } from "react-native";
 import { blocks, routineBlocks, type Session } from "@myfitnesscoach/contracts";
 
 export function Performance({ sessions }: { sessions: Session[] }) {
@@ -85,9 +85,11 @@ const s = StyleSheet.create({
     color: "#718077",
   },
   hero: {
-    fontSize: 38,
-    fontWeight: "800",
-    letterSpacing: -1,
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 44,
+    lineHeight: 46,
+    fontWeight: "900",
+    letterSpacing: -1.4,
     color: "#173e34",
   },
   metrics: { flexDirection: "row", gap: 12 },
@@ -96,19 +98,32 @@ const s = StyleSheet.create({
     minHeight: 130,
     borderRadius: 24,
     padding: 18,
-    backgroundColor: "#c8ff63",
+    backgroundColor: "#173e34",
     justifyContent: "space-between",
   },
-  metricValue: { fontSize: 34, fontWeight: "900", color: "#173e34" },
+  metricValue: {
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 42,
+    fontWeight: "900",
+    color: "#c8ff63",
+  },
   card: {
-    backgroundColor: "white",
-    borderRadius: 22,
+    backgroundColor: "#fafaf8",
+    borderRadius: 26,
     padding: 18,
     gap: 12,
-    borderWidth: 1,
-    borderColor: "#e1e9de",
+    shadowColor: "#102b24",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
-  title: { fontSize: 20, fontWeight: "800", color: "#173e34" },
+  title: {
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#173e34",
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -118,7 +133,12 @@ const s = StyleSheet.create({
   },
   body: { fontSize: 15, color: "#485e50" },
   bodyStrong: { fontSize: 15, fontWeight: "700", color: "#173e34" },
-  number: { fontSize: 18, fontWeight: "900", color: "#315d4d" },
+  number: {
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed" }),
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#315d4d",
+  },
   history: {
     flexDirection: "row",
     justifyContent: "space-between",
