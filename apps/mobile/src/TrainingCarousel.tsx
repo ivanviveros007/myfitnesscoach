@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ImageBackground,
   Platform,
@@ -44,6 +44,7 @@ export function TrainingCarousel({
 }) {
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
   const [preview, setPreview] = useState<Choice | null>(null);
+  const pendingStart = useRef<Routine | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
@@ -146,7 +147,14 @@ export function TrainingCarousel({
       </Pressable>
       <BottomSheet
         isPresented={preview !== null}
-        onDismiss={() => setPreview(null)}
+        onDismiss={() => {
+          setPreview(null);
+          if (pendingStart.current) {
+            const routine = pendingStart.current;
+            pendingStart.current = null;
+            onStart(routine);
+          }
+        }}
         showDragIndicator
         snapPoints={[{ height: 690 }]}
         containerColor="#17211d"
@@ -187,7 +195,7 @@ export function TrainingCarousel({
             <Pressable
               accessibilityRole="button"
               onPress={() => {
-                onStart(preview.routine);
+                pendingStart.current = preview.routine;
                 setPreview(null);
               }}
               style={({ pressed }) => [s.sheetStart, pressed && s.cardPressed]}

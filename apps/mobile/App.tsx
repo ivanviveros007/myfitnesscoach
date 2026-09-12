@@ -29,6 +29,7 @@ import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
+import { RestTimer, WorkoutClock } from "./src/WorkoutTimer";
 import {
   exercises,
   orientations,
@@ -732,6 +733,7 @@ function Main() {
               {session.items.filter((i) => i.status === "completed").length} de{" "}
               {session.items.length} ejercicios completos
             </Text>
+            <WorkoutClock startedAt={session.startedAt} />
             <AmrapPanel
               session={session}
               onStart={() =>
@@ -836,6 +838,9 @@ function Main() {
                         ? " · Repeticiones por lado"
                         : ""}
                     </Text>
+                    {p.restSeconds > 0 && !session.finishedAt && (
+                      <RestTimer seconds={p.restSeconds} />
+                    )}
                     {item.series.map((serie, n) => (
                       <View key={n} style={styles.series}>
                         <Text style={styles.body}>
