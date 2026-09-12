@@ -51,52 +51,16 @@ import {
 import * as storage from "./src/storage";
 import * as api from "./src/api";
 import { ExerciseDiagram } from "./src/ExerciseDiagram";
+import {
+  availableReplacements,
+  replaceRoutineExercise,
+} from "./src/replacements";
 const labels = {
   pending: "Pendiente",
   partial: "Parcial",
   completed: "Completado",
   skipped: "Omitido",
 };
-const replacementGroups = {
-  warmup: ["leg-swing", "shuffle", "calf-stretch", "child"],
-  power: ["jump", "shuffle", "squat"],
-  transfer: ["shuffle", "jump", "leg-swing"],
-  strength: [
-    "squat",
-    "goblet",
-    "rdl",
-    "bridge",
-    "incline-push",
-    "machine-row",
-    "dumbbell-row",
-  ],
-  stability: ["bird-dog", "bridge", "squat"],
-  flexibility: ["child", "calf-stretch", "leg-swing"],
-};
-function availableReplacements(
-  current: Exercise,
-  block: keyof typeof replacementGroups | undefined,
-  equipment: TrainingProfile["equipment"] = "gym",
-) {
-  const ids = block
-    ? replacementGroups[block]
-    : exercises.map((exercise) => exercise.id);
-  return ids
-    .map((id) => exercises.find((exercise) => exercise.id === id))
-    .filter(
-      (exercise): exercise is Exercise =>
-        !!exercise && exercise.id !== current.id,
-    )
-    .filter(
-      (exercise) => equipment === "gym" || !/máquina/i.test(exercise.equipment),
-    )
-    .filter(
-      (exercise) =>
-        equipment !== "bodyweight" ||
-        !/mancuerna|kettlebell/i.test(exercise.equipment),
-    )
-    .slice(0, 5);
-}
 function currentTrainingStreak(sessions: Session[]) {
   const days = [
     ...new Set(
@@ -415,25 +379,15 @@ function Main() {
   }
   function replaceExercise(index: number, replacement: Exercise) {
     if (!session) return;
-    const previous = session.routine.items[index];
-    const nextPrescription = { ...previous, exercise: replacement };
-    let seen = -1;
-    const nextBlocks = session.routine.blocks?.map((block) => ({
-      ...block,
-      items: block.items.map((item) => {
-        seen++;
-        return seen === index ? nextPrescription : item;
-      }),
-    }));
+    const nextRoutine = replaceRoutineExercise(
+      session.routine,
+      index,
+      replacement,
+    );
+    const nextPrescription = nextRoutine.items[index];
     persist({
       ...session,
-      routine: {
-        ...session.routine,
-        items: session.routine.items.map((item, itemIndex) =>
-          itemIndex === index ? nextPrescription : item,
-        ),
-        ...(nextBlocks ? { blocks: nextBlocks } : {}),
-      },
+      routine: nextRoutine,
       items: session.items.map((item, itemIndex) =>
         itemIndex === index
           ? {
@@ -596,7 +550,11 @@ function Main() {
               />
             )}
             {!!trainingChoices.length && (
-              <TrainingCarousel choices={trainingChoices} onStart={start} />
+              <TrainingCarousel
+                choices={trainingChoices}
+                equipment={profile?.equipment ?? "gym"}
+                onStart={start}
+              />
             )}
             {!!trainingChoices.length && (
               <View style={styles.todaySummary}>

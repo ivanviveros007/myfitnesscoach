@@ -14,10 +14,15 @@ import { BottomSheet, RNHostView } from "@expo/ui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   routineBlocks,
+  type TrainingProfile,
   type Routine,
   type Prescription,
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
+import {
+  availableReplacements,
+  replaceRoutineExercise,
+} from "./replacements";
 
 type CardImage = "padel" | "strength" | "mobility" | "amrap";
 type Choice = {
@@ -38,13 +43,17 @@ const cardImages = {
 
 export function TrainingCarousel({
   choices,
+  equipment,
   onStart,
 }: {
   choices: Choice[];
+  equipment: TrainingProfile["equipment"];
   onStart: (routine: Routine) => void;
 }) {
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
   const [preview, setPreview] = useState<Choice | null>(null);
+  const [swapIndex, setSwapIndex] = useState<number | null>(null);
+  const [withoutEquipment, setWithoutEquipment] = useState(false);
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const current =
@@ -54,6 +63,21 @@ export function TrainingCarousel({
     const index = choices.findIndex((choice) => choice.key === current.key);
     setSelected(choices[(index + 1) % choices.length]?.key ?? current.key);
   };
+  const previewBlocks = preview ? routineBlocks(preview.routine) : [];
+  const blockOffsets = previewBlocks.map((_, blockIndex) =>
+    previewBlocks
+      .slice(0, blockIndex)
+      .reduce((total, block) => total + block.items.length, 0),
+  );
+  const swapPrescription =
+    preview && swapIndex !== null ? preview.routine.items[swapIndex] : null;
+  const replacements = swapPrescription
+    ? availableReplacements(
+        swapPrescription.exercise,
+        swapPrescription.block,
+        withoutEquipment ? "bodyweight" : equipment,
+      )
+    : [];
   return (
     <View style={s.section}>
       <View>
@@ -148,7 +172,10 @@ export function TrainingCarousel({
       </Pressable>
       <BottomSheet
         isPresented={preview !== null}
-        onDismiss={() => setPreview(null)}
+        onDismiss={() => {
+          setPreview(null);
+          setSwapIndex(null);
+        }}
         showDragIndicator
         snapPoints={["full"]}
         containerColor="#17211d"
@@ -170,38 +197,158 @@ export function TrainingCarousel({
                 },
               ]}
             >
-              <View style={s.sheetTag}>
-                <Text style={s.sheetEyebrow}>{preview.tag}</Text>
-              </View>
-              <Text style={s.sheetTitle}>{preview.title}</Text>
-              <Text style={s.sheetMeta}>
-                ≈ {preview.routine.estimatedMinutes} min ·{" "}
-                {preview.routine.items.length} movimientos
-              </Text>
+              {swapPrescription ? (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setSwapIndex(null)}
+                    style={s.sheetBack}
+                  >
+                    <Text style={s.sheetBackText}>← Volver al bloque</Text>
+                  </Pressable>
+                  <Text style={s.sheetKicker}>CAMBIAR MOVIMIENTO</Text>
+                  <Text style={s.sheetTitle}>
+                    {swapPrescription.exercise.name}
+                  </Text>
+                  <Text style={s.sheetMeta}>
+                    Conservamos el objetivo, las series y la intensidad del
+                    bloque.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <View style={s.sheetTag}>
+                    <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+                  </View>
+                  <Text style={s.sheetTitle}>{preview.title}</Text>
+                  <Text style={s.sheetMeta}>
+                    ≈ {preview.routine.estimatedMinutes} min ·{" "}
+                    {preview.routine.items.length} movimientos
+                  </Text>
+                </>
+              )}
               <ScrollView
                 style={s.sheetList}
                 contentContainerStyle={s.sheetListContent}
                 showsVerticalScrollIndicator={false}
               >
-                {routineBlocks(preview.routine).map((block, blockIndex) => (
-                  <View key={block.id} style={s.sheetBlock}>
-                    <Text style={s.sheetBlockTitle}>
-                      {String(blockIndex + 1).padStart(2, "0")} · {block.title}
-                    </Text>
-                    {block.items.map((item) => (
-                      <View key={item.exercise.id} style={s.sheetExercise}>
-                        <Text style={s.sheetExerciseName}>
-                          {item.exercise.name}
-                        </Text>
-                        <Text style={s.sheetPrescription}>
-                          {prescriptionLabel(item, block.format)}
-                        </Text>
-                      </View>
+                {swapPrescription ? (
+                  <>
+                    <Pressable
+                      onPress={() => setWithoutEquipment((value) => !value)}
+                      style={[
+                        s.equipmentFilter,
+                        withoutEquipment && s.equipmentFilterActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          s.equipmentFilterText,
+                          withoutEquipment && s.equipmentFilterTextActive,
+                        ]}
+                      >
+                        {withoutEquipment ? "✓ " : ""}No tengo el material
+                      </Text>
+                    </Pressable>
+                    {replacements.map((exercise) => (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Elegir ${exercise.name}`}
+                        key={exercise.id}
+                        onPress={() => {
+                          setPreview((currentPreview) =>
+                            currentPreview
+                              ? {
+                                  ...currentPreview,
+                                  routine: replaceRoutineExercise(
+                                    currentPreview.routine,
+                                    swapIndex!,
+                                    exercise,
+                                  ),
+                                }
+                              : currentPreview,
+                          );
+                          setSwapIndex(null);
+                          setWithoutEquipment(false);
+                        }}
+                        style={({ pressed }) => [
+                          s.replacementCard,
+                          pressed && s.cardPressed,
+                        ]}
+                      >
+                        <View style={s.replacementIcon}>
+                          <SymbolView
+                            name="arrow.trianglehead.2.clockwise.rotate.90"
+                            size={18}
+                            tintColor="#173e34"
+                            weight="bold"
+                          />
+                        </View>
+                        <View style={s.replacementCopy}>
+                          <Text style={s.replacementTitle}>{exercise.name}</Text>
+                          <Text style={s.replacementMeta}>
+                            {exercise.muscles} · {exercise.equipment}
+                          </Text>
+                        </View>
+                        <Text style={s.replacementArrow}>›</Text>
+                      </Pressable>
                     ))}
-                  </View>
-                ))}
+                  </>
+                ) : (
+                  previewBlocks.map((block, blockIndex) => (
+                    <View key={block.id} style={s.sheetBlock}>
+                      <Text style={s.blockWatermark}>{blockIndex + 1}</Text>
+                      <View style={s.sheetBlockHeading}>
+                        <View style={s.blockBadge}>
+                          <Text style={s.blockBadgeText}>
+                            {String(blockIndex + 1).padStart(2, "0")}
+                          </Text>
+                        </View>
+                        <View style={s.blockHeadingCopy}>
+                          <Text style={s.sheetBlockTitle}>{block.title}</Text>
+                          <Text style={s.blockFormat}>
+                            {block.format.toUpperCase()} · {block.durationMinutes}'
+                          </Text>
+                        </View>
+                      </View>
+                      {block.items.map((item, itemIndex) => (
+                        <View
+                          key={`${item.exercise.id}-${itemIndex}`}
+                          style={s.sheetExercise}
+                        >
+                          <View style={s.exerciseCopy}>
+                            <Text style={s.sheetExerciseName}>
+                              {item.exercise.name}
+                            </Text>
+                            <Text style={s.sheetPrescription}>
+                              {prescriptionLabel(item, block.format)}
+                            </Text>
+                          </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Cambiar ${item.exercise.name}`}
+                            hitSlop={8}
+                            onPress={() =>
+                              setSwapIndex(
+                                blockOffsets[blockIndex] + itemIndex,
+                              )
+                            }
+                            style={s.swapButton}
+                          >
+                            <SymbolView
+                              name="arrow.trianglehead.2.clockwise.rotate.90"
+                              size={17}
+                              tintColor="#173e34"
+                              weight="bold"
+                            />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  ))
+                )}
               </ScrollView>
-              <Pressable
+              {!swapPrescription && <Pressable
                 accessibilityRole="button"
                 onPress={() => {
                   const routine = preview.routine;
@@ -215,7 +362,7 @@ export function TrainingCarousel({
               >
                 <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
                 <Text style={s.sheetStartArrow}>→</Text>
-              </Pressable>
+              </Pressable>}
             </View>
           </RNHostView>
         )}
@@ -287,12 +434,13 @@ const s = StyleSheet.create({
   changeRoutineText: { color: "#62766a", fontSize: 11 },
   changeRoutineArrow: { color: "#173e34", fontSize: 28, lineHeight: 30 },
   sheet: {
-    flex: 1,
+    height: "100%",
     alignSelf: "center",
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 10,
     gap: 8,
+    backgroundColor: "#17211d",
   },
   sheetTag: {
     alignSelf: "flex-start",
@@ -315,9 +463,17 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   sheetMeta: { color: "#b8c7bd", fontSize: 13, marginBottom: 6 },
-  sheetList: { flex: 1, width: "100%", alignSelf: "stretch" },
+  sheetList: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    width: "100%",
+    alignSelf: "stretch",
+  },
   sheetListContent: { gap: 15, paddingBottom: 12 },
   sheetBlock: {
+    position: "relative",
+    overflow: "hidden",
     width: "100%",
     alignSelf: "stretch",
     borderRadius: 18,
@@ -326,6 +482,34 @@ const s = StyleSheet.create({
     backgroundColor: "#f8f9f4",
     borderWidth: 1,
     borderColor: "#e1e7dd",
+  },
+  blockWatermark: {
+    position: "absolute",
+    right: -8,
+    bottom: -30,
+    color: "rgba(200,255,99,0.22)",
+    fontFamily: displayFont,
+    fontSize: 118,
+    lineHeight: 126,
+    fontWeight: "900",
+  },
+  sheetBlockHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  blockBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c8ff63",
+  },
+  blockBadgeText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
+  blockHeadingCopy: { flex: 1 },
+  blockFormat: {
+    marginTop: 2,
+    color: "#718078",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.7,
   },
   sheetBlockTitle: {
     color: "#173e34",
@@ -340,8 +524,57 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  sheetExerciseName: { flex: 1, color: "#284a40", fontSize: 14 },
-  sheetPrescription: { color: "#708277", fontSize: 11, textAlign: "right" },
+  exerciseCopy: { flex: 1, gap: 2 },
+  sheetExerciseName: { color: "#284a40", fontSize: 14, fontWeight: "700" },
+  sheetPrescription: { color: "#708277", fontSize: 11 },
+  swapButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#e4eadf",
+  },
+  sheetBack: { alignSelf: "flex-start", paddingVertical: 5 },
+  sheetBackText: { color: "#c8ff63", fontSize: 13, fontWeight: "800" },
+  sheetKicker: {
+    color: "#8da196",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  equipmentFilter: {
+    alignSelf: "flex-start",
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: "#6e7d75",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  equipmentFilterActive: { backgroundColor: "#c8ff63", borderColor: "#c8ff63" },
+  equipmentFilterText: { color: "white", fontSize: 12, fontWeight: "800" },
+  equipmentFilterTextActive: { color: "#173e34" },
+  replacementCard: {
+    minHeight: 76,
+    borderRadius: 18,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#f8f9f4",
+  },
+  replacementIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c8ff63",
+  },
+  replacementCopy: { flex: 1, gap: 3 },
+  replacementTitle: { color: "#173e34", fontSize: 14, fontWeight: "900" },
+  replacementMeta: { color: "#708277", fontSize: 10, lineHeight: 14 },
+  replacementArrow: { color: "#173e34", fontSize: 25 },
   sheetStart: {
     width: "100%",
     alignSelf: "stretch",
