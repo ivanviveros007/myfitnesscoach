@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import { BottomSheet } from "@expo/ui";
+import { BottomSheet, RNHostView } from "@expo/ui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   routineBlocks,
@@ -46,7 +46,7 @@ export function TrainingCarousel({
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
   const [preview, setPreview] = useState<Choice | null>(null);
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
   if (!current) return null;
@@ -150,63 +150,73 @@ export function TrainingCarousel({
         isPresented={preview !== null}
         onDismiss={() => setPreview(null)}
         showDragIndicator
-        snapPoints={[{ height: 690 }]}
+        snapPoints={[{ fraction: 0.9 }]}
         containerColor="#17211d"
       >
         {preview && (
-          <View
-            style={[
-              s.sheet,
-              {
-                width: Math.max(280, screenWidth - 32),
-                paddingBottom: Math.max(insets.bottom, 18),
-              },
-            ]}
+          <RNHostView
+            style={{
+              width: screenWidth,
+              height: Math.round(screenHeight * 0.86),
+            }}
           >
-            <View style={s.sheetTag}>
-              <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+            <View
+              style={[
+                s.sheet,
+                {
+                  width: Math.max(280, screenWidth - 24),
+                  paddingBottom: Math.max(insets.bottom, 18),
+                },
+              ]}
+            >
+              <View style={s.sheetTag}>
+                <Text style={s.sheetEyebrow}>{preview.tag}</Text>
+              </View>
+              <Text style={s.sheetTitle}>{preview.title}</Text>
+              <Text style={s.sheetMeta}>
+                ≈ {preview.routine.estimatedMinutes} min ·{" "}
+                {preview.routine.items.length} movimientos
+              </Text>
+              <ScrollView
+                style={s.sheetList}
+                contentContainerStyle={s.sheetListContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {routineBlocks(preview.routine).map((block, blockIndex) => (
+                  <View key={block.id} style={s.sheetBlock}>
+                    <Text style={s.sheetBlockTitle}>
+                      {String(blockIndex + 1).padStart(2, "0")} · {block.title}
+                    </Text>
+                    {block.items.map((item) => (
+                      <View key={item.exercise.id} style={s.sheetExercise}>
+                        <Text style={s.sheetExerciseName}>
+                          {item.exercise.name}
+                        </Text>
+                        <Text style={s.sheetPrescription}>
+                          {prescriptionLabel(item, block.format)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  const routine = preview.routine;
+                  setPreview(null);
+                  onStart(routine);
+                }}
+                style={({ pressed }) => [
+                  s.sheetStart,
+                  pressed && s.cardPressed,
+                ]}
+              >
+                <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
+                <Text style={s.sheetStartArrow}>→</Text>
+              </Pressable>
             </View>
-            <Text style={s.sheetTitle}>{preview.title}</Text>
-            <Text style={s.sheetMeta}>
-              ≈ {preview.routine.estimatedMinutes} min ·{" "}
-              {preview.routine.items.length} movimientos
-            </Text>
-            <ScrollView
-              style={s.sheetList}
-              contentContainerStyle={s.sheetListContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {routineBlocks(preview.routine).map((block, blockIndex) => (
-                <View key={block.id} style={s.sheetBlock}>
-                  <Text style={s.sheetBlockTitle}>
-                    {String(blockIndex + 1).padStart(2, "0")} · {block.title}
-                  </Text>
-                  {block.items.map((item) => (
-                    <View key={item.exercise.id} style={s.sheetExercise}>
-                      <Text style={s.sheetExerciseName}>
-                        {item.exercise.name}
-                      </Text>
-                      <Text style={s.sheetPrescription}>
-                        {prescriptionLabel(item, block.format)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                const routine = preview.routine;
-                setPreview(null);
-                onStart(routine);
-              }}
-              style={({ pressed }) => [s.sheetStart, pressed && s.cardPressed]}
-            >
-              <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
-              <Text style={s.sheetStartArrow}>→</Text>
-            </Pressable>
-          </View>
+          </RNHostView>
         )}
       </BottomSheet>
     </View>
