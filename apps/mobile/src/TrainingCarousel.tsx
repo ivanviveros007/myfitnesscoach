@@ -208,14 +208,6 @@ export function TrainingCarousel({
         </View>
         <Text style={s.changeRoutineArrow}>›</Text>
       </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => setPreview(current)}
-        style={({ pressed }) => [s.cta, pressed && s.cardPressed]}
-      >
-        <Text style={s.ctaText}>Ver ejercicios</Text>
-        <Text style={s.ctaArrow}>→</Text>
-      </Pressable>
       <BottomSheet
         isPresented={preview !== null}
         onDismiss={() => {
@@ -855,16 +847,4 @@ const s = StyleSheet.create({
     fontWeight: "700",
     color: "rgba(255,255,255,0.82)",
   },
-  cta: {
-    minHeight: 60,
-    marginHorizontal: 22,
-    borderRadius: 19,
-    paddingHorizontal: 18,
-    backgroundColor: "#c8ff63",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  ctaText: { flex: 1, fontSize: 16, fontWeight: "900", color: "#173e34" },
-  ctaArrow: { fontSize: 24, fontWeight: "900", color: "#173e34" },
 });
