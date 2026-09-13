@@ -92,12 +92,13 @@ export function makeDailyRoutines(
     const blocks = sourceBlocks.map((block, index): WorkoutBlock => {
       if (index === 0) return { ...block, title: "Warm Up", goal: "warmup" };
       const highlighted = index === 1 + ((daySeed + styleIndex) % 4);
+      const appliesStyle = highlighted && key !== "recommended";
       return {
         ...block,
         id: `${dateKey}-${key}-${block.section}`,
-        title: highlighted ? name : block.title,
-        goal: highlighted ? goal : block.goal,
-        format: highlighted ? (formats[goal] ?? block.format) : block.format,
+        title: appliesStyle ? name : block.title,
+        goal: appliesStyle ? goal : block.goal,
+        format: appliesStyle ? (formats[goal] ?? block.format) : block.format,
         items: rotate([...block.items], daySeed + styleIndex + index),
       };
     });

@@ -17,6 +17,7 @@ import {
   type TrainingProfile,
   type Routine,
   type Prescription,
+  type BlockGoal,
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
 import { availableReplacements, replaceRoutineExercise } from "./replacements";
@@ -51,6 +52,8 @@ export function TrainingCarousel({
   const [preview, setPreview] = useState<Choice | null>(null);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [withoutEquipment, setWithoutEquipment] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const current =
@@ -218,17 +221,19 @@ export function TrainingCarousel({
         onDismiss={() => {
           setPreview(null);
           setSwapIndex(null);
+          setEditMode(false);
+          setEditingBlock(null);
         }}
         showDragIndicator
         snapPoints={["full"]}
-        containerColor="#17211d"
+        containerColor="#f4f5ef"
       >
         {preview && (
           <RNHostView
             style={{
               width: screenWidth,
               height: Math.max(560, screenHeight - Math.max(insets.top, 12)),
-              backgroundColor: "#17211d",
+              backgroundColor: "transparent",
             }}
           >
             <View
@@ -268,6 +273,40 @@ export function TrainingCarousel({
                     ≈ {preview.routine.estimatedMinutes} min ·{" "}
                     {preview.routine.items.length} movimientos
                   </Text>
+                  <View style={s.sessionTools}>
+                    <View style={s.goalIcons}>
+                      {sessionGoals(previewBlocks).map((goal) => (
+                        <View key={goal.key} style={s.goalChip}>
+                          <SymbolView
+                            name={goal.icon}
+                            size={16}
+                            tintColor="#c8ff63"
+                            weight="bold"
+                          />
+                          <Text style={s.goalText}>{goal.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Editar entrenamiento"
+                      onPress={() => {
+                        setEditMode((value) => !value);
+                        setEditingBlock(null);
+                      }}
+                      style={[s.editSession, editMode && s.editSessionActive]}
+                    >
+                      <SymbolView
+                        name={editMode ? "checkmark" : "pencil"}
+                        size={16}
+                        tintColor="#173e34"
+                        weight="bold"
+                      />
+                      <Text style={s.editSessionText}>
+                        {editMode ? "Listo" : "Editar"}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </>
               )}
               <ScrollView
@@ -352,28 +391,55 @@ export function TrainingCarousel({
                           </Text>
                         </View>
                         <View style={s.blockHeadingCopy}>
-                          <Text style={s.sheetBlockTitle}>{block.title}</Text>
+                          <Text style={s.sheetBlockTitle}>
+                            {blockIndex === 0
+                              ? "WARM UP"
+                              : `BLOQUE ${blockIndex}: ${block.title}`}
+                          </Text>
                           <Text style={s.blockFormat}>
                             {block.format.toUpperCase()} ·{" "}
                             {block.durationMinutes}'
                           </Text>
                         </View>
+                        {editMode && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Editar bloque ${blockIndex}`}
+                            hitSlop={8}
+                            onPress={() =>
+                              setEditingBlock((value) =>
+                                value === blockIndex ? null : blockIndex,
+                              )
+                            }
+                            style={s.blockEditButton}
+                          >
+                            <SymbolView
+                              name="pencil"
+                              size={17}
+                              tintColor="#173e34"
+                              weight="bold"
+                            />
+                          </Pressable>
+                        )}
+                      </View>
+                      {editingBlock === blockIndex && (
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel={`Cambiar bloque ${blockIndex}`}
-                          hitSlop={8}
                           onPress={() => replaceWholeBlock(blockIndex)}
-                          style={s.blockSwapButton}
+                          style={s.replaceBlockAction}
                         >
                           <SymbolView
                             name="arrow.trianglehead.2.clockwise.rotate.90"
-                            size={16}
+                            size={15}
                             tintColor="#173e34"
                             weight="bold"
                           />
-                          <Text style={s.blockSwapText}>Cambiar</Text>
+                          <Text style={s.replaceBlockText}>
+                            Cambiar bloque completo
+                          </Text>
                         </Pressable>
-                      </View>
+                      )}
                       {block.items.map((item, itemIndex) => (
                         <View
                           key={`${item.exercise.id}-${itemIndex}`}
@@ -387,22 +453,26 @@ export function TrainingCarousel({
                               {prescriptionLabel(item, block.format)}
                             </Text>
                           </View>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Cambiar ${item.exercise.name}`}
-                            hitSlop={8}
-                            onPress={() =>
-                              setSwapIndex(blockOffsets[blockIndex] + itemIndex)
-                            }
-                            style={s.swapButton}
-                          >
-                            <SymbolView
-                              name="arrow.trianglehead.2.clockwise.rotate.90"
-                              size={17}
-                              tintColor="#173e34"
-                              weight="bold"
-                            />
-                          </Pressable>
+                          {editingBlock === blockIndex && (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Cambiar ${item.exercise.name}`}
+                              hitSlop={8}
+                              onPress={() =>
+                                setSwapIndex(
+                                  blockOffsets[blockIndex] + itemIndex,
+                                )
+                              }
+                              style={s.swapButton}
+                            >
+                              <SymbolView
+                                name="pencil"
+                                size={17}
+                                tintColor="#173e34"
+                                weight="bold"
+                              />
+                            </Pressable>
+                          )}
                         </View>
                       ))}
                     </View>
@@ -415,6 +485,8 @@ export function TrainingCarousel({
                   onPress={() => {
                     const routine = preview.routine;
                     setPreview(null);
+                    setEditMode(false);
+                    setEditingBlock(null);
                     onStart(routine);
                   }}
                   style={({ pressed }) => [
@@ -432,6 +504,43 @@ export function TrainingCarousel({
       </BottomSheet>
     </View>
   );
+}
+
+const goalDetails: Record<
+  BlockGoal,
+  { label: string; icon: SymbolViewProps["name"] }
+> = {
+  warmup: { label: "Warm up", icon: "flame.fill" },
+  power: { label: "Potencia", icon: "bolt.fill" },
+  strength: { label: "Fuerza", icon: "dumbbell.fill" },
+  "full-body": {
+    label: "Full body",
+    icon: "figure.strengthtraining.traditional",
+  },
+  hypertrophy: { label: "Musculación", icon: "dumbbell.fill" },
+  mobility: { label: "Movilidad", icon: "figure.flexibility" },
+  "upper-body": {
+    label: "Upper body",
+    icon: "figure.strengthtraining.traditional",
+  },
+  legs: { label: "Piernas", icon: "figure.walk" },
+  transfer: { label: "Transferencia", icon: "figure.run" },
+  stability: { label: "Estabilidad", icon: "figure.core.training" },
+  conditioning: { label: "Cardio", icon: "heart.fill" },
+  recovery: { label: "Recuperación", icon: "heart.fill" },
+};
+
+function sessionGoals(blocks: WorkoutBlock[]) {
+  const unique = new Map<
+    string,
+    { key: string; label: string; icon: SymbolViewProps["name"] }
+  >();
+  for (const block of blocks) {
+    if (!block.goal || block.goal === "warmup") continue;
+    const detail = goalDetails[block.goal];
+    unique.set(detail.label, { key: block.goal, ...detail });
+  }
+  return [...unique.values()].slice(0, 4);
 }
 
 function prescriptionLabel(item: Prescription, format: WorkoutBlock["format"]) {
@@ -504,6 +613,8 @@ const s = StyleSheet.create({
     paddingBottom: 10,
     gap: 8,
     backgroundColor: "#17211d",
+    borderRadius: 28,
+    overflow: "hidden",
   },
   sheetTag: {
     alignSelf: "flex-start",
@@ -526,6 +637,35 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   sheetMeta: { color: "#b8c7bd", fontSize: 13, marginBottom: 6 },
+  sessionTools: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
+  },
+  goalIcons: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  goalChip: {
+    minHeight: 31,
+    borderRadius: 99,
+    paddingHorizontal: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#26332e",
+  },
+  goalText: { color: "white", fontSize: 9, fontWeight: "800" },
+  editSession: {
+    minHeight: 38,
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#c8ff63",
+  },
+  editSessionActive: { backgroundColor: "white" },
+  editSessionText: { color: "#173e34", fontSize: 11, fontWeight: "900" },
   sheetList: {
     flex: 1,
     flexShrink: 1,
@@ -567,16 +707,24 @@ const s = StyleSheet.create({
   },
   blockBadgeText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
   blockHeadingCopy: { flex: 1 },
-  blockSwapButton: {
-    minHeight: 38,
+  blockEditButton: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    paddingHorizontal: 10,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    justifyContent: "center",
     backgroundColor: "#e4eadf",
   },
-  blockSwapText: { color: "#173e34", fontSize: 10, fontWeight: "900" },
+  replaceBlockAction: {
+    minHeight: 42,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "#c8ff63",
+  },
+  replaceBlockText: { color: "#173e34", fontSize: 11, fontWeight: "900" },
   blockFormat: {
     marginTop: 2,
     color: "#718078",
