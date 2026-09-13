@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   ImageBackground,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
+  Vibration,
   View,
 } from "react-native";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
@@ -472,28 +475,114 @@ export function TrainingCarousel({
                 )}
               </ScrollView>
               {!swapPrescription && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => {
+                <SlideToStart
+                  onComplete={() => {
                     const routine = preview.routine;
                     setPreview(null);
                     setEditMode(false);
                     setEditingBlock(null);
                     onStart(routine);
                   }}
-                  style={({ pressed }) => [
-                    s.sheetStart,
-                    pressed && s.cardPressed,
-                  ]}
-                >
-                  <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
-                  <Text style={s.sheetStartArrow}>→</Text>
-                </Pressable>
+                />
               )}
             </View>
           </RNHostView>
         )}
       </BottomSheet>
+    </View>
+  );
+}
+
+function SlideToStart({ onComplete }: { onComplete: () => void }) {
+  const position = useRef(new Animated.Value(0)).current;
+  const [trackWidth, setTrackWidth] = useState(0);
+  const maxTravel = Math.max(0, trackWidth - 66);
+  const maxTravelRef = useRef(maxTravel);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    maxTravelRef.current = maxTravel;
+  }, [maxTravel]);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const finish = () => {
+    const destination = maxTravelRef.current;
+    Animated.spring(position, {
+      toValue: destination,
+      useNativeDriver: false,
+      speed: 20,
+      bounciness: 0,
+    }).start(() => {
+      Vibration.vibrate(35);
+      onCompleteRef.current();
+      position.setValue(0);
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderMove: (_, gesture) => {
+        position.setValue(
+          Math.max(0, Math.min(gesture.dx, maxTravelRef.current)),
+        );
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx >= maxTravelRef.current * 0.72) {
+          finish();
+          return;
+        }
+        Animated.spring(position, {
+          toValue: 0,
+          useNativeDriver: false,
+          speed: 20,
+          bounciness: 5,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(position, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      },
+    }),
+  ).current;
+
+  return (
+    <View
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Deslizá para iniciar el entrenamiento"
+      accessibilityHint="Deslizá hacia la derecha. Con VoiceOver, tocá dos veces."
+      accessibilityActions={[{ name: "activate", label: "Iniciar" }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "activate") finish();
+      }}
+      onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+      style={s.slideTrack}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[s.slideProgress, { width: Animated.add(position, 62) }]}
+      />
+      <Text pointerEvents="none" style={s.slideText}>
+        Deslizá para entrenar
+      </Text>
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[s.slideThumb, { transform: [{ translateX: position }] }]}
+      >
+        <SymbolView
+          name="arrow.right"
+          size={25}
+          tintColor="#173e34"
+          weight="bold"
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -788,19 +877,49 @@ const s = StyleSheet.create({
   replacementTitle: { color: "#173e34", fontSize: 14, fontWeight: "900" },
   replacementMeta: { color: "#708277", fontSize: 10, lineHeight: 14 },
   replacementArrow: { color: "#173e34", fontSize: 25 },
-  sheetStart: {
+  slideTrack: {
     width: "100%",
     alignSelf: "stretch",
-    minHeight: 62,
-    borderRadius: 20,
-    backgroundColor: "#c8ff63",
-    paddingHorizontal: 19,
-    flexDirection: "row",
+    height: 64,
+    borderRadius: 32,
+    padding: 5,
+    overflow: "hidden",
+    backgroundColor: "#edf2e8",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
   },
-  sheetStartText: { color: "#173e34", fontSize: 17, fontWeight: "900" },
-  sheetStartArrow: { color: "#173e34", fontSize: 25, fontWeight: "900" },
+  slideProgress: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 32,
+    backgroundColor: "#c8ff63",
+  },
+  slideText: {
+    color: "#173e34",
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: -0.2,
+  },
+  slideThumb: {
+    position: "absolute",
+    left: 5,
+    top: 5,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+    shadowColor: "#173e34",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   image: { flex: 1, margin: -17, padding: 17, justifyContent: "space-between" },
   cardImage: { borderRadius: 22 },
   imageShade: {
