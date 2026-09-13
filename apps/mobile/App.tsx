@@ -30,6 +30,7 @@ import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
+import { makeDailyRoutines } from "./src/daily-routines";
 import { RestTimer, WorkoutClock } from "./src/WorkoutTimer";
 import {
   exercises,
@@ -187,51 +188,29 @@ function Main() {
       row.session.finishedAt &&
       new Date(row.session.startedAt).getTime() >= weekStart,
   ).length;
+  const dateKey = new Date().toLocaleDateString("en-CA");
+  const experienceColors = ["#173e34", "#ef6d4f", "#397e88", "#7657a8"];
+  const experienceImages = ["padel", "strength", "mobility", "amrap"] as const;
+  const experienceIcons = [
+    "sparkles",
+    "bolt.fill",
+    "dumbbell.fill",
+    "figure.highintensity.intervaltraining",
+  ] as const;
   const trainingChoices =
     todayRoutine && effectivePlan && profile
-      ? [
-          {
-            key: "recommended",
-            title: "Sesión recomendada",
-            tag: "PARA HOY",
-            icon: "sparkles" as const,
-            routine: todayRoutine,
-            color: "#173e34",
-            image: "padel" as const,
-          },
-          {
-            key: "strength",
-            title: "Fuerza total",
-            tag: "FUERZA · CONTROL",
-            icon: "dumbbell.fill" as const,
-            routine:
-              effectivePlan.routines.find((candidate) =>
-                candidate.name.includes("Fuerza"),
-              ) ?? todayRoutine,
-            color: "#ef6d4f",
-            image: "strength" as const,
-          },
-          {
-            key: "mobility",
-            title: "Mover y recuperar",
-            tag: "MOVILIDAD",
-            icon: "figure.flexibility" as const,
-            routine:
-              effectivePlan.routines[effectivePlan.routines.length - 1] ??
-              todayRoutine,
-            color: "#397e88",
-            image: "mobility" as const,
-          },
-          {
-            key: "amrap",
-            title: "AMRAP corto",
-            tag: "12 MIN · A TU RITMO",
-            icon: "timer" as const,
-            routine: amrapTemplate(orientation, 12, profile.equipment),
-            color: "#7657a8",
-            image: "amrap" as const,
-          },
-        ]
+      ? makeDailyRoutines(todayRoutine, dateKey, finishedForSport.length).map(
+          (choice, index) => ({
+            key: choice.key,
+            title:
+              choice.key === "recommended" ? "Sesión recomendada" : choice.name,
+            tag: choice.tag,
+            icon: experienceIcons[index % experienceIcons.length]!,
+            routine: choice.routine,
+            color: experienceColors[index % experienceColors.length]!,
+            image: experienceImages[index % experienceImages.length]!,
+          }),
+        )
       : [];
   function savePlan(next: WeeklyPlan) {
     const key = `plan:${next.input.orientation}:${next.input.week}`;

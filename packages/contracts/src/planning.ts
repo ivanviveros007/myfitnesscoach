@@ -321,10 +321,17 @@ export function makeWeeklyPlan(
       },
       {
         section: "block-3",
+        goal: "stability",
+        title: "Midline & Stability",
+        purpose: "Control del tronco y estabilidad",
+        kinds: ["stability"],
+      },
+      {
+        section: "block-4",
         goal: "mobility",
-        title: "Estabilidad y movilidad",
-        purpose: "Control y vuelta a la calma",
-        kinds: ["stability", "flexibility"],
+        title: "Mobility & Recovery",
+        purpose: "Movilidad y vuelta a la calma",
+        kinds: ["flexibility"],
       },
     ];
     const workoutBlocks: WorkoutBlock[] = groups
@@ -338,7 +345,9 @@ export function makeWeeklyPlan(
         format: "sets" as const,
         durationMinutes: Math.max(
           3,
-          Math.round(input.minutes * ([0.15, 0.2, 0.45, 0.2][position] ?? 0.2)),
+          Math.round(
+            input.minutes * ([0.12, 0.18, 0.42, 0.14, 0.14][position] ?? 0.2),
+          ),
         ),
         items: items.filter((item) => group.kinds.includes(item.block)),
       }))

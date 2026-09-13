@@ -44,7 +44,7 @@ test("weekly availability, duration and guides across equipment and experience",
             assert.equal(r.trainingMode, "planned");
             assert.deepEqual(
               r.blocks?.map((block) => block.section),
-              ["warmup", "block-1", "block-2", "block-3"],
+              ["warmup", "block-1", "block-2", "block-3", "block-4"],
             );
             assert.ok(r.items.length >= 8);
             assert.ok(r.estimatedMinutes! <= minutes);
@@ -70,7 +70,7 @@ test("AMRAP has a warm up, a timed block and compatible session results", () => 
   const routine = amrapTemplate("padel", 12, "bodyweight");
   assert.deepEqual(
     routine.blocks?.map((block) => block.section),
-    ["warmup", "block-1", "block-2", "block-3"],
+    ["warmup", "block-1", "block-2", "block-3", "block-4"],
   );
   assert.equal(routine.blocks?.[0]?.goal, "warmup");
   assert.equal(
@@ -97,7 +97,7 @@ test("AMRAP has a warm up, a timed block and compatible session results", () => 
   });
   assert.equal(session.amrap?.rounds, 3);
 });
-test("every new routine uses four ordered blocks beginning with warm up", () => {
+test("every new routine uses warm up plus four ordered blocks", () => {
   for (const routine of [
     template("padel"),
     template("football"),
@@ -105,10 +105,10 @@ test("every new routine uses four ordered blocks beginning with warm up", () => 
     template("free", ["squat", "bridge"]),
     amrapTemplate("padel", 12, "gym"),
   ]) {
-    assert.equal(routine.blocks?.length, 4);
+    assert.equal(routine.blocks?.length, 5);
     assert.deepEqual(
       routine.blocks?.map((block) => block.section),
-      ["warmup", "block-1", "block-2", "block-3"],
+      ["warmup", "block-1", "block-2", "block-3", "block-4"],
     );
     assert.equal(routine.blocks?.[0]?.goal, "warmup");
     assert.equal(routine.blocks?.[0]?.title.toLowerCase(), "warm up");

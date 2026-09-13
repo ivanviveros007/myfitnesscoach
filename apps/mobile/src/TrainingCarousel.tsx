@@ -19,10 +19,7 @@ import {
   type Prescription,
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
-import {
-  availableReplacements,
-  replaceRoutineExercise,
-} from "./replacements";
+import { availableReplacements, replaceRoutineExercise } from "./replacements";
 
 type CardImage = "padel" | "strength" | "mobility" | "amrap";
 type Choice = {
@@ -78,6 +75,52 @@ export function TrainingCarousel({
         withoutEquipment ? "bodyweight" : equipment,
       )
     : [];
+  const replaceWholeBlock = (blockIndex: number) => {
+    setPreview((currentPreview) => {
+      if (!currentPreview) return currentPreview;
+      const currentChoiceIndex = choices.findIndex(
+        (choice) => choice.key === currentPreview.key,
+      );
+      for (let step = 1; step < choices.length; step++) {
+        const candidateChoice =
+          choices[(currentChoiceIndex + step) % choices.length];
+        const candidate = candidateChoice
+          ? routineBlocks(candidateChoice.routine)[blockIndex]
+          : undefined;
+        const currentBlock = routineBlocks(currentPreview.routine)[blockIndex];
+        if (
+          !candidate ||
+          !currentBlock ||
+          candidate.title === currentBlock.title
+        )
+          continue;
+        const nextBlocks = routineBlocks(currentPreview.routine).map(
+          (block, index) =>
+            index === blockIndex
+              ? {
+                  ...candidate,
+                  id: `${currentPreview.routine.id}-${block.section}-${Date.now()}`,
+                  position: block.position,
+                  section: block.section,
+                }
+              : block,
+        );
+        return {
+          ...currentPreview,
+          routine: {
+            ...currentPreview.routine,
+            blocks: nextBlocks,
+            items: nextBlocks.flatMap((block) => block.items),
+            estimatedMinutes:
+              (currentPreview.routine.estimatedMinutes ?? 30) -
+              currentBlock.durationMinutes +
+              candidate.durationMinutes,
+          },
+        };
+      }
+      return currentPreview;
+    });
+  };
   return (
     <View style={s.section}>
       <View>
@@ -285,7 +328,9 @@ export function TrainingCarousel({
                           />
                         </View>
                         <View style={s.replacementCopy}>
-                          <Text style={s.replacementTitle}>{exercise.name}</Text>
+                          <Text style={s.replacementTitle}>
+                            {exercise.name}
+                          </Text>
                           <Text style={s.replacementMeta}>
                             {exercise.muscles} · {exercise.equipment}
                           </Text>
@@ -301,15 +346,33 @@ export function TrainingCarousel({
                       <View style={s.sheetBlockHeading}>
                         <View style={s.blockBadge}>
                           <Text style={s.blockBadgeText}>
-                            {String(blockIndex + 1).padStart(2, "0")}
+                            {blockIndex === 0
+                              ? "WU"
+                              : String(blockIndex).padStart(2, "0")}
                           </Text>
                         </View>
                         <View style={s.blockHeadingCopy}>
                           <Text style={s.sheetBlockTitle}>{block.title}</Text>
                           <Text style={s.blockFormat}>
-                            {block.format.toUpperCase()} · {block.durationMinutes}'
+                            {block.format.toUpperCase()} ·{" "}
+                            {block.durationMinutes}'
                           </Text>
                         </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Cambiar bloque ${blockIndex}`}
+                          hitSlop={8}
+                          onPress={() => replaceWholeBlock(blockIndex)}
+                          style={s.blockSwapButton}
+                        >
+                          <SymbolView
+                            name="arrow.trianglehead.2.clockwise.rotate.90"
+                            size={16}
+                            tintColor="#173e34"
+                            weight="bold"
+                          />
+                          <Text style={s.blockSwapText}>Cambiar</Text>
+                        </Pressable>
                       </View>
                       {block.items.map((item, itemIndex) => (
                         <View
@@ -329,9 +392,7 @@ export function TrainingCarousel({
                             accessibilityLabel={`Cambiar ${item.exercise.name}`}
                             hitSlop={8}
                             onPress={() =>
-                              setSwapIndex(
-                                blockOffsets[blockIndex] + itemIndex,
-                              )
+                              setSwapIndex(blockOffsets[blockIndex] + itemIndex)
                             }
                             style={s.swapButton}
                           >
@@ -348,21 +409,23 @@ export function TrainingCarousel({
                   ))
                 )}
               </ScrollView>
-              {!swapPrescription && <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  const routine = preview.routine;
-                  setPreview(null);
-                  onStart(routine);
-                }}
-                style={({ pressed }) => [
-                  s.sheetStart,
-                  pressed && s.cardPressed,
-                ]}
-              >
-                <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
-                <Text style={s.sheetStartArrow}>→</Text>
-              </Pressable>}
+              {!swapPrescription && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const routine = preview.routine;
+                    setPreview(null);
+                    onStart(routine);
+                  }}
+                  style={({ pressed }) => [
+                    s.sheetStart,
+                    pressed && s.cardPressed,
+                  ]}
+                >
+                  <Text style={s.sheetStartText}>Iniciar entrenamiento</Text>
+                  <Text style={s.sheetStartArrow}>→</Text>
+                </Pressable>
+              )}
             </View>
           </RNHostView>
         )}
@@ -504,6 +567,16 @@ const s = StyleSheet.create({
   },
   blockBadgeText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
   blockHeadingCopy: { flex: 1 },
+  blockSwapButton: {
+    minHeight: 38,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#e4eadf",
+  },
+  blockSwapText: { color: "#173e34", fontSize: 10, fontWeight: "900" },
   blockFormat: {
     marginTop: 2,
     color: "#718078",

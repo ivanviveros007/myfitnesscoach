@@ -165,8 +165,8 @@ export const blockGoalSchema = z.enum([
 export type BlockGoal = z.infer<typeof blockGoalSchema>;
 export const workoutBlockSchema = z.object({
   id: z.string().min(1).max(100),
-  position: z.number().int().min(0).max(3),
-  section: z.enum(["warmup", "block-1", "block-2", "block-3"]),
+  position: z.number().int().min(0).max(4),
+  section: z.enum(["warmup", "block-1", "block-2", "block-3", "block-4"]),
   // Optional while previously-synced sessions are migrated lazily on read.
   goal: blockGoalSchema.optional(),
   title: z.string().min(1).max(120),
@@ -186,7 +186,7 @@ export const routineSchema = z
     focus: z.string().optional(),
     estimatedMinutes: z.number().optional(),
     trainingMode: trainingModeSchema.optional(),
-    blocks: z.array(workoutBlockSchema).min(1).max(4).optional(),
+    blocks: z.array(workoutBlockSchema).min(1).max(5).optional(),
     items: z.array(prescriptionSchema).min(1).max(30),
   })
   .superRefine((routine, ctx) => {
@@ -248,8 +248,8 @@ export function template(
   const strength = (chosen.length ? chosen : defaults).map((id) =>
     make(id, "strength", 2, 10),
   );
+  const stability = [make("bird-dog", "stability", 2, 6)];
   const mobility = [
-    make("bird-dog", "stability", 1, 6),
     make("calf-stretch", "flexibility", 1, 25),
     make("child", "flexibility", 1, 30),
   ];
@@ -291,11 +291,22 @@ export function template(
       id: `demo-${orientation}-mobility`,
       position: 3,
       section: "block-3",
-      goal: "mobility",
-      title: "Mobility & Stability",
-      purpose: "Control del tronco y recuperación de movilidad",
+      goal: "stability",
+      title: "Midline & Stability",
+      purpose: "Control del tronco y estabilidad",
       format: "sets",
-      durationMinutes: 8,
+      durationMinutes: 6,
+      items: stability,
+    },
+    {
+      id: `demo-${orientation}-recovery`,
+      position: 4,
+      section: "block-4",
+      goal: "mobility",
+      title: "Mobility",
+      purpose: "Recuperación de movilidad y vuelta a la calma",
+      format: "sets",
+      durationMinutes: 6,
       items: mobility,
     },
   ];
@@ -308,8 +319,8 @@ export function template(
         : `Base ${orientations[orientation].name}`,
     orientation,
     focus:
-      "Cuatro bloques: preparación, estímulo atlético, fuerza y movilidad.",
-    estimatedMinutes: 37,
+      "Warm up y cuatro bloques de potencia, fuerza, estabilidad y movilidad.",
+    estimatedMinutes: 41,
     trainingMode: orientation === "free" ? "free" : "planned",
     blocks,
     items,
@@ -447,6 +458,12 @@ export function amrapTemplate(
       effort: "Ritmo sostenible: mantené la técnica durante todas las rondas.",
     };
   });
+  const midlineItems = mainItems.filter(
+    (item) => item.exercise.id === "bird-dog",
+  );
+  const conditioningItems = mainItems.filter(
+    (item) => item.exercise.id !== "bird-dog",
+  );
   const recoveryItems: Prescription[] = ["calf-stretch", "child"].map((id) => ({
     exercise: exercises.find((exercise) => exercise.id === id)!,
     block: "flexibility",
@@ -460,7 +477,8 @@ export function amrapTemplate(
   const items = [
     ...warmupItems,
     ...activationItems,
-    ...mainItems,
+    ...conditioningItems,
+    ...midlineItems,
     ...recoveryItems,
   ];
   return {
@@ -503,12 +521,23 @@ export function amrapTemplate(
         purpose: "Acondicionamiento y fuerza resistente",
         format: "amrap",
         durationMinutes,
-        items: mainItems,
+        items: conditioningItems,
+      },
+      {
+        id: `amrap-${orientation}-${durationMinutes}-midline`,
+        position: 3,
+        section: "block-3",
+        goal: "stability",
+        title: "Midline",
+        purpose: "Control del tronco bajo fatiga",
+        format: "sets",
+        durationMinutes: 4,
+        items: midlineItems,
       },
       {
         id: `amrap-${orientation}-${durationMinutes}-recovery`,
-        position: 3,
-        section: "block-3",
+        position: 4,
+        section: "block-4",
         goal: "mobility",
         title: "Mobility Reset",
         purpose: "Movilidad y vuelta a la calma",
