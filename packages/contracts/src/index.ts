@@ -1,5 +1,15 @@
 import { z } from "zod";
 import { additionalExercises } from "./catalog.js";
+export {
+  classifiedExercises,
+  exerciseCatalogStats,
+  type ClassifiedExercise,
+  type DoseProfile,
+  type ExerciseImpact,
+  type ExerciseLevel,
+  type ExerciseMetric,
+  type ExerciseOrigin,
+} from "./exercise-classification.js";
 export const orientationSchema = z.enum([
   "padel",
   "football",
