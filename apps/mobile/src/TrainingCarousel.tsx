@@ -127,8 +127,8 @@ export function TrainingCarousel({
   return (
     <View style={s.section}>
       <View>
-        <Text style={s.eyebrow}>ELEGÍ TU EXPERIENCIA</Text>
-        <Text style={s.heading}>¿Qué querés entrenar?</Text>
+        <Text style={s.eyebrow}>PROPUESTAS PARA HOY</Text>
+        <Text style={s.heading}>Opciones para entrenar hoy</Text>
       </View>
       <ScrollView
         horizontal
