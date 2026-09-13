@@ -690,7 +690,7 @@ const s = StyleSheet.create({
     position: "absolute",
     right: -8,
     bottom: -30,
-    color: "rgba(200,255,99,0.22)",
+    color: "rgba(139,190,50,0.38)",
     fontFamily: displayFont,
     fontSize: 118,
     lineHeight: 126,
