@@ -1,4 +1,4 @@
-export type ExerciseOrigin = "bigg-reference" | "curated";
+export type ExerciseOrigin = "bigg-reference" | "dcfit-reference" | "curated";
 export type ExerciseLevel = "beginner" | "intermediate" | "advanced";
 export type ExerciseImpact = "none" | "low" | "medium" | "high";
 export type ExerciseMetric = "reps" | "seconds" | "distance" | "calories";
@@ -84,6 +84,35 @@ const curated = (
   unilateral,
 });
 
+const dcfit = (
+  id: string,
+  es: string,
+  en: string,
+  patterns: string[],
+  goals: string[],
+  regions: string[],
+  equipment: string[],
+  level: ExerciseLevel,
+  impact: ExerciseImpact,
+  doseProfiles: DoseProfile[],
+  slide: number,
+  unilateral = false,
+): ClassifiedExercise => ({
+  id,
+  name: { es, en },
+  origin: "dcfit-reference",
+  patterns,
+  goals,
+  regions,
+  equipment,
+  level,
+  impact,
+  metric: patterns.includes("running") ? "distance" : "reps",
+  doseProfiles,
+  sourceFrames: [`DC FIT WOD · slide ${slide}`],
+  unilateral,
+});
+
 export const classifiedExercises: ClassifiedExercise[] = [
   bigg("prone-hip-rotation", "Rotación interna y externa de cadera en prono", "Prone Hip Internal-External Rotation", ["hip-rotation"], ["warmup", "mobility"], ["hips"], ["mat"], "beginner", "none", ["warmup", "mobility"], ["IMG_3809", "IMG_3811", "IMG_3815"], true),
   bigg("ankle-mobilization", "Movilización de tobillo", "Ankle Mobilization", ["ankle-mobility"], ["warmup", "mobility"], ["ankles"], ["none"], "beginner", "none", ["warmup", "mobility"], ["IMG_3809", "IMG_3810", "IMG_3813"], true),
@@ -163,6 +192,25 @@ export const classifiedExercises: ClassifiedExercise[] = [
   bigg("barbell-good-morning", "Good morning con barra", "Barbell Good Morning", ["hinge"], ["strength", "full-body"], ["hamstrings", "glutes", "back"], ["barbell", "rack"], "advanced", "none", ["strength"], ["IMG_3899"]),
   bigg("v-sit-up", "Abdominal en V", "V-Sit Up", ["trunk-flexion"], ["hiit", "midline"], ["core"], ["mat"], "intermediate", "none", ["core-control", "interval"], ["IMG_3899", "IMG_3900"]),
 
+  dcfit("barbell-thruster", "Thruster con barra", "Barbell Thruster", ["squat", "vertical-push"], ["cross-training", "conditioning", "full-body"], ["full-body"], ["barbell"], "advanced", "medium", ["interval", "conditioning"], 1),
+  dcfit("box-jump-over", "Salto sobre el cajón", "Box Jump Over", ["vertical-jump", "landing"], ["cross-training", "hiit", "power"], ["legs"], ["box"], "advanced", "high", ["power", "interval"], 1),
+  dcfit("shuttle-run", "Carrera ida y vuelta", "Shuttle Run", ["running", "deceleration", "change-of-direction"], ["conditioning", "hiit", "sport"], ["legs", "cardio"], ["none"], "intermediate", "high", ["interval", "conditioning"], 1),
+  dcfit("dumbbell-deadlift", "Peso muerto con mancuernas", "Dumbbell Deadlift", ["hinge"], ["strength", "cross-training", "full-body"], ["glutes", "hamstrings"], ["dumbbell"], "beginner", "none", ["strength", "conditioning"], 1),
+  dcfit("dumbbell-front-squat", "Sentadilla frontal con mancuernas", "Dumbbell Front Squat", ["squat"], ["strength", "cross-training", "legs"], ["quads", "glutes", "core"], ["dumbbell"], "intermediate", "none", ["strength", "conditioning"], 1),
+  dcfit("walking-lunge", "Zancadas caminando", "Walking Lunge", ["lunge", "locomotion"], ["strength", "conditioning", "legs"], ["quads", "glutes"], ["none"], "beginner", "low", ["strength", "hypertrophy", "conditioning"], 1, true),
+  dcfit("bench-dip", "Fondos en banco", "Bench Dip", ["vertical-push"], ["strength", "hypertrophy", "upper-body"], ["triceps", "chest"], ["bench"], "intermediate", "none", ["strength", "hypertrophy"], 1),
+  dcfit("lateral-lunge", "Zancada lateral", "Lateral Lunge", ["lateral-lunge"], ["strength", "mobility", "sport"], ["adductors", "glutes", "quads"], ["none"], "beginner", "low", ["strength", "mobility"], 1, true),
+  dcfit("walkout", "Caminata de manos a plancha", "Walkout", ["hinge", "plank", "locomotion"], ["warmup", "conditioning", "full-body"], ["core", "shoulders", "hamstrings"], ["none"], "beginner", "low", ["warmup", "conditioning"], 1),
+  dcfit("pull-up", "Dominada prona", "Pull Up", ["vertical-pull"], ["strength", "cross-training", "upper-body"], ["back", "biceps"], ["pull-up-bar"], "advanced", "none", ["strength", "conditioning"], 2),
+  dcfit("wall-ball", "Lanzamiento de balón a pared", "Wall Ball", ["squat", "throw"], ["cross-training", "conditioning", "full-body"], ["full-body"], ["medicine-ball", "wall-target"], "intermediate", "medium", ["interval", "conditioning"], 2),
+  dcfit("burpee-box-jump-over", "Burpee con salto sobre cajón", "Burpee Box Jump Over", ["burpee", "vertical-jump", "landing"], ["cross-training", "hiit", "conditioning"], ["full-body"], ["box"], "advanced", "high", ["interval", "conditioning"], 2),
+  dcfit("double-dumbbell-row", "Remo con dos mancuernas", "Double Dumbbell Row", ["horizontal-pull", "hinge"], ["strength", "hypertrophy", "upper-body"], ["back", "biceps"], ["dumbbell"], "intermediate", "none", ["strength", "hypertrophy"], 2),
+  dcfit("isometric-push-up", "Flexión isométrica", "Isometric Push Up", ["horizontal-push", "isometric"], ["strength", "upper-body"], ["chest", "triceps", "core"], ["none"], "intermediate", "none", ["strength", "core-control"], 2),
+  dcfit("dumbbell-front-raise", "Elevación frontal con mancuernas", "Dumbbell Front Raise", ["shoulder-raise"], ["hypertrophy", "upper-body"], ["shoulders"], ["dumbbell"], "beginner", "none", ["hypertrophy"], 2),
+  dcfit("alternating-dumbbell-curl", "Curl de bíceps alternado con mancuernas", "Alternating Dumbbell Biceps Curl", ["elbow-flexion"], ["hypertrophy", "upper-body"], ["biceps"], ["dumbbell"], "beginner", "none", ["hypertrophy"], 2, true),
+  dcfit("plate-burpee", "Burpee sobre disco", "Plate Burpee", ["burpee"], ["cross-training", "hiit", "conditioning"], ["full-body"], ["weight-plate"], "intermediate", "high", ["interval", "conditioning"], 2),
+  dcfit("ground-to-overhead", "Carga del suelo sobre la cabeza", "Ground to Overhead", ["hinge", "pull", "overhead"], ["cross-training", "power", "conditioning"], ["full-body"], ["weight-plate", "dumbbell", "barbell"], "advanced", "medium", ["power", "conditioning"], 2),
+
   curated("air-squat", "Sentadilla sin carga", "Air Squat", ["squat"], ["warmup", "strength", "conditioning"], ["quads", "glutes"], ["none"], "beginner", "none", ["warmup", "strength", "conditioning"]),
   curated("goblet-squat", "Sentadilla goblet", "Goblet Squat", ["squat"], ["strength", "hypertrophy", "full-body"], ["quads", "glutes"], ["dumbbell", "kettlebell"], "beginner", "none", ["strength", "hypertrophy"]),
   curated("dumbbell-rdl", "Peso muerto rumano con mancuernas", "Dumbbell Romanian Deadlift", ["hinge"], ["strength", "hypertrophy", "full-body"], ["hamstrings", "glutes"], ["dumbbell"], "beginner", "none", ["strength", "hypertrophy"]),
@@ -204,5 +252,6 @@ export const classifiedExercises: ClassifiedExercise[] = [
 export const exerciseCatalogStats = {
   total: classifiedExercises.length,
   observedInBigg: classifiedExercises.filter((item) => item.origin === "bigg-reference").length,
+  observedInDcfit: classifiedExercises.filter((item) => item.origin === "dcfit-reference").length,
   curated: classifiedExercises.filter((item) => item.origin === "curated").length,
 };

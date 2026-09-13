@@ -11,6 +11,7 @@ test("classified catalog has unique ids and both origins", () => {
     classifiedExercises.length,
   );
   assert.ok(exerciseCatalogStats.observedInBigg > 50);
+  assert.ok(exerciseCatalogStats.observedInDcfit > 10);
   assert.ok(exerciseCatalogStats.curated > 20);
 });
 
