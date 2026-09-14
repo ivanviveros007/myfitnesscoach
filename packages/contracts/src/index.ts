@@ -10,6 +10,14 @@ export {
   type ExerciseMetric,
   type ExerciseOrigin,
 } from "./exercise-classification.js";
+export {
+  exerciseTechniques,
+  exerciseTechniqueById,
+  exerciseTechniqueSchema,
+  exercisePrescriptionSchema,
+  exerciseSubstitutionSchema,
+  type ExerciseTechnique,
+} from "./exercise-technique.js";
 export const orientationSchema = z.enum([
   "padel",
   "football",

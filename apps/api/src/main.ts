@@ -10,6 +10,9 @@ import {
   UseGuards,
   BadRequestException,
   HttpCode,
+  Query,
+  Param,
+  NotFoundException,
 } from "@nestjs/common";
 import { json } from "express";
 import helmet from "helmet";
@@ -19,6 +22,7 @@ import {
   orientations,
   syncSchema,
   cloudDataSyncSchema,
+  exerciseTechniques,
 } from "@myfitnesscoach/contracts";
 import { Database } from "./database.js";
 import { Auth, AuthGuard, type UserRequest } from "./auth.js";
@@ -44,7 +48,29 @@ class Api {
     return { status: "ok" };
   }
   @Get("catalog") catalog() {
-    return { exercises, orientations };
+    return { exercises, orientations, technicalExerciseCount: exerciseTechniques.length };
+  }
+  @Get("catalog/exercises") async technicalExercises(
+    @Query("goal") goal?: string,
+    @Query("equipment") equipment?: string,
+    @Query("level") level?: string,
+    @Query("beginnerEligible") beginnerEligible?: string,
+  ) {
+    if (level && !["beginner", "intermediate", "advanced"].includes(level))
+      throw new BadRequestException("Nivel inválido.");
+    if (beginnerEligible && !["true", "false"].includes(beginnerEligible))
+      throw new BadRequestException("beginnerEligible debe ser true o false.");
+    return this.db.listExercises({
+      goal,
+      equipment,
+      level,
+      beginnerEligible: beginnerEligible === undefined ? undefined : beginnerEligible === "true",
+    });
+  }
+  @Get("catalog/exercises/:id") async technicalExercise(@Param("id") id: string) {
+    const sheet = await this.db.getExercise(id);
+    if (!sheet) throw new NotFoundException("Ejercicio no encontrado.");
+    return sheet;
   }
   @Post("auth/register") register(@Body() body: unknown) {
     const c = parse(credentialsSchema, body);
