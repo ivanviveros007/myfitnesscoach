@@ -91,15 +91,15 @@ class Api {
       throw new BadRequestException(
         "El perfil requiere una adaptación revisada antes de generar un entrenamiento.",
       );
-    const generator = process.env.GEMINI_API_KEY ? "gemini-v1" : "rules-v1";
+    const generator = process.env.GEMINI_API_KEY ? "gemini-v2" : "rules-v1";
     const cacheKey = createHash("sha256")
       .update(`${generator}:${JSON.stringify(input)}`)
       .digest("hex");
     const cached = await this.db.getDailyTraining(cacheKey);
     if (cached) return cached;
-    let selections = null;
+    let aiPlan = null;
     try {
-      selections = await selectDailyExercisesWithAi(input);
+      aiPlan = await selectDailyExercisesWithAi(input);
     } catch (error) {
       console.warn("Gemini no disponible; se usa el generador validado.", error);
     }
@@ -107,7 +107,11 @@ class Api {
       date: input.date,
       orientation: input.orientation,
       generatedAt: new Date().toISOString(),
-      choices: makeDailyRoutines(input, selections ?? undefined),
+      choices: makeDailyRoutines(
+        input,
+        aiPlan?.selections,
+        aiPlan?.insights,
+      ),
     };
     await this.db.cacheDailyTraining(cacheKey, input.date, result);
     return result;

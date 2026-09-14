@@ -399,6 +399,7 @@ function prescription(sheet: ExerciseTechnique, spec: BlockSpec): Prescription {
 export function makeDailyRoutines(
   input: DailyTrainingRequest,
   selections: DailyExerciseSelections = {},
+  insights: Record<string, string> = {},
 ) {
   const { date: dateKey, completedCount, profile, orientation } = input;
   const base = template(orientation);
@@ -476,6 +477,17 @@ export function makeDailyRoutines(
         0,
       ),
     });
-    return { key, name, tag, goal, routine };
+    const fallbackInsight =
+      key === "recommended"
+        ? `Combina ${blocks.slice(1, 4).map((block) => block.title.toLowerCase()).join(", ")} según tu perfil y el entrenamiento de hoy.`
+        : `${name} combina bloques de ${blocks.slice(1, 4).map((block) => block.title.toLowerCase()).join(", ")} con ejercicios compatibles con tu equipamiento.`;
+    return {
+      key,
+      name,
+      tag,
+      goal,
+      insight: insights[key] ?? fallbackInsight,
+      routine,
+    };
   });
 }

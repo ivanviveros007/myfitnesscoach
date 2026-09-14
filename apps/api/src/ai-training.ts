@@ -5,13 +5,21 @@ import {
 } from "./daily-training.js";
 
 type GeminiSelection = {
-  routines?: { key?: string; blocks?: { position?: number; exerciseIds?: string[] }[] }[];
+  routines?: { key?: string; insight?: string; blocks?: { position?: number; exerciseIds?: string[] }[] }[];
 };
 
-function parseSelections(value: GeminiSelection): DailyExerciseSelections {
+export type DailyAiPlan = {
+  selections: DailyExerciseSelections;
+  insights: Record<string, string>;
+};
+
+function parseSelections(value: GeminiSelection): DailyAiPlan {
   const selections: DailyExerciseSelections = {};
+  const insights: Record<string, string> = {};
   for (const routine of value.routines ?? []) {
     if (!routine.key) continue;
+    if (routine.insight?.trim())
+      insights[routine.key] = routine.insight.trim().slice(0, 280);
     const blocks: Record<number, string[]> = {};
     for (const block of routine.blocks ?? []) {
       if (!Number.isInteger(block.position) || !Array.isArray(block.exerciseIds))
@@ -22,15 +30,15 @@ function parseSelections(value: GeminiSelection): DailyExerciseSelections {
     }
     selections[routine.key] = blocks;
   }
-  return selections;
+  return { selections, insights };
 }
 
 export async function selectDailyExercisesWithAi(
   input: DailyTrainingRequest,
-): Promise<DailyExerciseSelections | null> {
+): Promise<DailyAiPlan | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite";
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18_000);
   try {
@@ -46,7 +54,7 @@ export async function selectDailyExercisesWithAi(
               role: "user",
               parts: [
                 {
-                  text: `Seleccioná los IDs para una programación diaria. Respetá la intención, patrones, regiones y cantidad de cada bloque. Priorizá variedad entre propuestas y evitá repetir IDs dentro de una rutina. No inventes IDs. Perfil: ${JSON.stringify({ experience: input.profile.experience, equipment: input.profile.equipment, jumpReady: input.profile.jumpReady, orientation: input.orientation, completedCount: input.completedCount })}. Opciones permitidas: ${JSON.stringify(dailySelectionCandidates(input))}`,
+                  text: `Seleccioná los IDs para una programación diaria. Respetá la intención, patrones, regiones y cantidad de cada bloque. Priorizá variedad entre propuestas y evitá repetir IDs dentro de una rutina. No inventes IDs. Para cada rutina escribí insight: una explicación en español rioplatense, clara, de una sola oración y máximo 180 caracteres, sobre por qué sirve esa combinación; no hagas afirmaciones médicas. Perfil: ${JSON.stringify({ experience: input.profile.experience, equipment: input.profile.equipment, jumpReady: input.profile.jumpReady, orientation: input.orientation, completedCount: input.completedCount })}. Opciones permitidas: ${JSON.stringify(dailySelectionCandidates(input))}`,
                 },
               ],
             },
@@ -61,9 +69,10 @@ export async function selectDailyExercisesWithAi(
                   type: "ARRAY",
                   items: {
                     type: "OBJECT",
-                    required: ["key", "blocks"],
+                    required: ["key", "insight", "blocks"],
                     properties: {
                       key: { type: "STRING" },
+                      insight: { type: "STRING" },
                       blocks: {
                         type: "ARRAY",
                         items: {

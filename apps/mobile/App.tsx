@@ -245,6 +245,7 @@ function Main() {
           title:
             choice.key === "recommended" ? "Sesión recomendada" : choice.name,
           tag: choice.tag,
+          insight: choice.insight,
           icon: experienceIcons[index % experienceIcons.length]!,
           routine: choice.routine,
           color: experienceColors[index % experienceColors.length]!,
@@ -646,6 +647,7 @@ function Main() {
               <TrainingCarousel
                 choices={trainingChoices}
                 equipment={profile?.equipment ?? "gym"}
+                isPersonalizing={dailyTrainingQuery.isFetching}
                 onStart={start}
               />
             )}

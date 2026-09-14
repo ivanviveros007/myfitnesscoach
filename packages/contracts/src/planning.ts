@@ -44,6 +44,7 @@ export const dailyTrainingChoiceSchema = z.object({
   name: z.string().min(1).max(120),
   tag: z.string().min(1).max(120),
   goal: z.string().min(1).max(40),
+  insight: z.string().min(1).max(280).optional(),
   routine: routineSchema,
 });
 export const dailyTrainingResponseSchema = z.object({

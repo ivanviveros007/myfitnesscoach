@@ -30,6 +30,7 @@ type Choice = {
   key: string;
   title: string;
   tag: string;
+  insight?: string;
   icon: SymbolViewProps["name"];
   routine: Routine;
   color: string;
@@ -45,10 +46,12 @@ const cardImages = {
 export function TrainingCarousel({
   choices,
   equipment,
+  isPersonalizing = false,
   onStart,
 }: {
   choices: Choice[];
   equipment: TrainingProfile["equipment"];
+  isPersonalizing?: boolean;
   onStart: (routine: Routine) => void;
 }) {
   const [selected, setSelected] = useState(choices[0]?.key ?? "");
@@ -129,6 +132,19 @@ export function TrainingCarousel({
   };
   return (
     <View style={s.section}>
+      <View style={s.adaptiveBanner}>
+        <View style={s.adaptiveIcon}>
+          <SymbolView name="sparkles" size={17} tintColor="#173e34" weight="bold" />
+        </View>
+        <View style={s.adaptiveCopy}>
+          <Text style={s.adaptiveTitle}>ENTRENAMIENTO ADAPTATIVO</Text>
+          <Text style={s.adaptiveText}>
+            {isPersonalizing
+              ? "Actualizando según tu perfil y actividad…"
+              : "Preparado hoy según tu perfil, equipamiento e historial."}
+          </Text>
+        </View>
+      </View>
       <View>
         <Text style={s.eyebrow}>PROPUESTAS PARA HOY</Text>
         <Text style={s.heading}>Opciones para entrenar hoy</Text>
@@ -204,9 +220,9 @@ export function TrainingCarousel({
           weight="bold"
         />
         <View style={s.changeRoutineCopy}>
-          <Text style={s.changeRoutineTitle}>Cambiar rutina</Text>
+          <Text style={s.changeRoutineTitle}>✦ Pedir otra propuesta</Text>
           <Text style={s.changeRoutineText}>
-            Ver otra propuesta para entrenar hoy
+            Tu entrenador elegirá otra opción compatible
           </Text>
         </View>
         <Text style={s.changeRoutineArrow}>›</Text>
@@ -268,6 +284,16 @@ export function TrainingCarousel({
                     ≈ {preview.routine.estimatedMinutes} min ·{" "}
                     {preview.routine.items.length} movimientos
                   </Text>
+                  <View style={s.insightCard}>
+                    <SymbolView name="sparkles" size={18} tintColor="#c8ff63" weight="bold" />
+                    <View style={s.insightCopy}>
+                      <Text style={s.insightTitle}>POR QUÉ ESTA SESIÓN</Text>
+                      <Text style={s.insightText}>
+                        {preview.insight ??
+                          "Seleccionada según tu perfil, equipamiento y actividad reciente."}
+                      </Text>
+                    </View>
+                  </View>
                   <View style={s.sessionTools}>
                     <View style={s.goalIcons}>
                       {sessionGoals(previewBlocks).map((goal) => (
@@ -647,6 +673,33 @@ const displayFont = Platform.select({
 });
 const s = StyleSheet.create({
   section: { gap: 15, marginHorizontal: -22 },
+  adaptiveBanner: {
+    marginHorizontal: 22,
+    minHeight: 70,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    backgroundColor: "#173e34",
+  },
+  adaptiveIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c8ff63",
+  },
+  adaptiveCopy: { flex: 1, gap: 3 },
+  adaptiveTitle: {
+    color: "#c8ff63",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  adaptiveText: { color: "white", fontSize: 12, lineHeight: 17 },
   eyebrow: {
     paddingHorizontal: 22,
     fontSize: 10,
@@ -728,6 +781,22 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   sheetMeta: { color: "#b8c7bd", fontSize: 13, marginBottom: 6 },
+  insightCard: {
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#26332e",
+  },
+  insightCopy: { flex: 1, gap: 3 },
+  insightTitle: {
+    color: "#c8ff63",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  insightText: { color: "white", fontSize: 11, lineHeight: 16 },
   sessionTools: {
     flexDirection: "row",
     alignItems: "center",
