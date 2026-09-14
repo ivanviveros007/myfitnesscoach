@@ -30,6 +30,7 @@ import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
+import { ActivityTracker, CurrentWeek } from "./src/HomeActivity";
 import { RestTimer, WorkoutClock } from "./src/WorkoutTimer";
 import {
   exercises,
@@ -63,26 +64,6 @@ const labels = {
   completed: "Completado",
   skipped: "Omitido",
 };
-function currentTrainingStreak(sessions: Session[]) {
-  const days = [
-    ...new Set(
-      sessions
-        .filter((session) => session.finishedAt)
-        .map((session) => session.finishedAt!.slice(0, 10)),
-    ),
-  ]
-    .sort()
-    .reverse();
-  if (!days.length) return 0;
-  const cursor = new Date(`${days[0]}T12:00:00`);
-  let streak = 0;
-  for (const day of days) {
-    if (day !== cursor.toISOString().slice(0, 10)) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -200,12 +181,6 @@ function Main() {
         scheduledDay: undefined,
       }
     : null;
-  const weekStart = new Date(`${currentWeek()}T00:00:00`).getTime();
-  const sessionsThisWeek = rows.filter(
-    (row) =>
-      row.session.finishedAt &&
-      new Date(row.session.startedAt).getTime() >= weekStart,
-  ).length;
   const dateKey = new Date().toLocaleDateString("en-CA");
   const experienceColors = ["#173e34", "#ef6d4f", "#397e88", "#7657a8"];
   const experienceImages = ["padel", "strength", "mobility", "amrap"] as const;
@@ -597,6 +572,7 @@ function Main() {
         )}
         {tab === "today" && !session && !planning && (
           <>
+            <CurrentWeek sessions={rows.map((row) => row.session)} />
             <Text style={styles.eyebrow}>TU ENTRENAMIENTO, A TU RITMO</Text>
             <Text style={styles.hero}>Hoy también{"\n"}cuenta.</Text>
             <View style={styles.wrap}>
@@ -643,24 +619,10 @@ function Main() {
               />
             )}
             {!!trainingChoices.length && (
-              <View style={styles.todaySummary}>
-                <View>
-                  <Text style={styles.summaryNumber}>{sessionsThisWeek}</Text>
-                  <Text style={styles.summaryLabel}>ESTA SEMANA</Text>
-                </View>
-                <View>
-                  <Text style={styles.summaryNumber}>
-                    {currentTrainingStreak(rows.map((row) => row.session))}
-                  </Text>
-                  <Text style={styles.summaryLabel}>RACHA ACTUAL</Text>
-                </View>
-                <Pressable
-                  onPress={() => setTodayMenu(true)}
-                  style={styles.summaryAction}
-                >
-                  <Text style={styles.summaryActionText}>Opciones</Text>
-                </Pressable>
-              </View>
+              <ActivityTracker
+                sessions={rows.map((row) => row.session)}
+                onOptions={() => setTodayMenu(true)}
+              />
             )}
             {orientation !== "free" ? (
               profile && effectivePlan && todayRoutine ? (
@@ -1540,38 +1502,6 @@ const styles = StyleSheet.create({
   quickActionText: { fontSize: 14, fontWeight: "800", color: "#173e34" },
   quickTitle: { fontSize: 21, fontWeight: "800", color: "white" },
   quickMuted: { fontSize: 12, lineHeight: 18, color: "#c3d0c7" },
-  todaySummary: {
-    minHeight: 92,
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "#e8eddf",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  summaryNumber: {
-    fontFamily: displayFont,
-    fontSize: 29,
-    lineHeight: 32,
-    fontWeight: "900",
-    color: "#173e34",
-  },
-  summaryLabel: {
-    fontSize: 8,
-    letterSpacing: 0.8,
-    fontWeight: "900",
-    color: "#6a7c70",
-  },
-  summaryAction: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 15,
-    backgroundColor: "white",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  summaryActionText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
   profileCard: {
     backgroundColor: "white",
     borderRadius: 22,
