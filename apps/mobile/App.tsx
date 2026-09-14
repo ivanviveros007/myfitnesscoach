@@ -18,6 +18,12 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
+import {
+  QueryClient,
+  QueryClientProvider,
+  onlineManager,
+  useQuery,
+} from "@tanstack/react-query";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
@@ -48,7 +54,6 @@ import {
   type Orientation,
   type Session,
   type Exercise,
-  type DailyTrainingResponse,
   isSessionActive,
 } from "@myfitnesscoach/contracts";
 import * as storage from "./src/storage";
@@ -64,11 +69,23 @@ const labels = {
   completed: "Completado",
   skipped: "Omitido",
 };
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
+      retry: 2,
+      refetchOnReconnect: true,
+    },
+  },
+});
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <Main />
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <Main />
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 function Main() {
@@ -94,8 +111,6 @@ function Main() {
   const [library, setLibrary] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
   const [todayMenu, setTodayMenu] = useState(false);
-  const [dailyTraining, setDailyTraining] =
-    useState<DailyTrainingResponse | null>(null);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
   const [planWeek, setPlanWeek] = useState(currentWeek());
@@ -182,6 +197,39 @@ function Main() {
       }
     : null;
   const dateKey = new Date().toLocaleDateString("en-CA");
+  const profileFingerprint = profile ? JSON.stringify(profile) : "";
+  const cachedDailyTraining =
+    ready && profile
+      ? storage.readDailyTraining(owner, dateKey, orientation)
+      : null;
+  const dailyTrainingQuery = useQuery({
+    queryKey: [
+      "daily-training",
+      url,
+      owner,
+      dateKey,
+      orientation,
+      finishedForSport.length,
+      profileFingerprint,
+    ],
+    queryFn: async () => {
+      const response = await api.dailyTraining(url, {
+        date: dateKey,
+        orientation,
+        completedCount: finishedForSport.length,
+        profile: profile!,
+      });
+      storage.cacheDailyTraining(owner, response);
+      return response;
+    },
+    enabled:
+      ready && online && !!url && !!profile && profile.limitations !== "review",
+    initialData: cachedDailyTraining ?? undefined,
+    initialDataUpdatedAt: cachedDailyTraining
+      ? new Date(cachedDailyTraining.generatedAt).getTime()
+      : undefined,
+  });
+  const dailyTraining = dailyTrainingQuery.data ?? null;
   const experienceColors = ["#173e34", "#ef6d4f", "#397e88", "#7657a8"];
   const experienceImages = ["padel", "strength", "mobility", "amrap"] as const;
   const experienceIcons = [
@@ -203,49 +251,29 @@ function Main() {
           image: experienceImages[index % experienceImages.length]!,
         }))
       : [];
-  const profileFingerprint = profile ? JSON.stringify(profile) : "";
   useEffect(() => {
-    if (!ready || !profile || profile.limitations === "review") {
-      setDailyTraining(null);
-      return;
-    }
-    const cached = storage.readDailyTraining(owner, dateKey, orientation);
-    setDailyTraining(cached);
-    if (!online || !url) return;
-    let cancelled = false;
-    api
-      .dailyTraining(url, {
-        date: dateKey,
-        orientation,
-        completedCount: finishedForSport.length,
-        profile,
-      })
-      .then((response) => {
-        if (cancelled) return;
-        storage.cacheDailyTraining(owner, response);
-        setDailyTraining(response);
-        setNotice("Entrenamiento de hoy actualizado");
-      })
-      .catch(() => {
-        if (!cancelled)
-          setNotice(
-            cached
-              ? "Sin conexión · usando el entrenamiento guardado de hoy"
-              : "Conectate para descargar el entrenamiento de hoy",
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
+    if (!online)
+      setNotice(
+        cachedDailyTraining
+          ? "Sin conexión · usando el entrenamiento guardado de hoy"
+          : "Conectate para descargar el entrenamiento de hoy",
+      );
+    else if (dailyTrainingQuery.fetchStatus === "fetching")
+      setNotice("Actualizando el entrenamiento de hoy…");
+    else if (dailyTrainingQuery.isError)
+      setNotice(
+        cachedDailyTraining
+          ? "Sin conexión · usando el entrenamiento guardado de hoy"
+          : "Conectate para descargar el entrenamiento de hoy",
+      );
+    else if (dailyTrainingQuery.data && online)
+      setNotice("Entrenamiento de hoy actualizado");
   }, [
-    ready,
-    profileFingerprint,
-    owner,
-    dateKey,
-    orientation,
+    dailyTrainingQuery.fetchStatus,
+    dailyTrainingQuery.isError,
+    dailyTrainingQuery.dataUpdatedAt,
     online,
-    url,
-    finishedForSport.length,
+    !!cachedDailyTraining,
   ]);
   function savePlan(next: WeeklyPlan) {
     const key = `plan:${next.input.orientation}:${next.input.week}`;
@@ -273,9 +301,12 @@ function Main() {
         );
         setReady(true);
       });
-    const unsub = NetInfo.addEventListener((s) =>
-      setOnline(s.isConnected !== false && s.isInternetReachable !== false),
-    );
+    const unsub = NetInfo.addEventListener((s) => {
+      const connected =
+        s.isConnected !== false && s.isInternetReachable !== false;
+      setOnline(connected);
+      onlineManager.setOnline(connected);
+    });
     return unsub;
   }, []);
   async function synchronize() {
