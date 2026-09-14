@@ -7,19 +7,23 @@ function clock(seconds: number) {
 
 export function WorkoutClock({
   startedAt,
+  finishedAt,
   onReset,
 }: {
   startedAt: string;
+  finishedAt?: string | null;
   onReset: () => void;
 }) {
   const [, refresh] = useState(0);
   useEffect(() => {
+    if (finishedAt) return;
     const timer = setInterval(() => refresh((value) => value + 1), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [finishedAt]);
+  const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
   const elapsed = Math.max(
     0,
-    Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
+    Math.floor((end - new Date(startedAt).getTime()) / 1000),
   );
   return (
     <View style={s.workout}>
@@ -30,8 +34,11 @@ export function WorkoutClock({
           accessibilityLabel="Reiniciar tiempo de entrenamiento"
           hitSlop={8}
           onPress={onReset}
+          disabled={!!finishedAt}
         >
-          <Text style={s.reset}>↻ Reiniciar tiempo</Text>
+          <Text style={s.reset}>
+            {finishedAt ? "SESIÓN FINALIZADA" : "↻ Reiniciar tiempo"}
+          </Text>
         </Pressable>
       </View>
       <Text style={s.workoutClock}>{clock(elapsed)}</Text>

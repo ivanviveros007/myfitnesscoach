@@ -235,7 +235,20 @@ function Main() {
   });
   const dailyTraining = dailyTrainingQuery.data ?? null;
   const experienceColors = ["#173e34", "#ef6d4f", "#397e88", "#7657a8"];
-  const experienceImages = ["padel", "strength", "mobility", "amrap"] as const;
+  const experienceImages = [
+    "padel",
+    "strength",
+    "mobility",
+    "amrap",
+    "landmine",
+    "boxJump",
+    "dumbbellRdl",
+    "battleRopes",
+  ] as const;
+  const imageOffset = [...dateKey].reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
   const experienceIcons = [
     "sparkles",
     "bolt.fill",
@@ -253,7 +266,8 @@ function Main() {
           icon: experienceIcons[index % experienceIcons.length]!,
           routine: choice.routine,
           color: experienceColors[index % experienceColors.length]!,
-          image: experienceImages[index % experienceImages.length]!,
+          image:
+            experienceImages[(index + imageOffset) % experienceImages.length]!,
         }))
       : [];
   useEffect(() => {
@@ -794,6 +808,7 @@ function Main() {
             </Text>
             <WorkoutClock
               startedAt={session.startedAt}
+              finishedAt={session.finishedAt}
               onReset={() =>
                 Alert.alert(
                   "Reiniciar tiempo",
@@ -1060,7 +1075,17 @@ function Main() {
                     ...session,
                     finishedAt: new Date().toISOString(),
                   };
-                  persist(next);
+                  try {
+                    storage.save(owner, next);
+                    setSession(null);
+                    setTick((value) => value + 1);
+                    setNotice("Sesión finalizada y guardada.");
+                  } catch {
+                    Alert.alert(
+                      "No se pudo finalizar",
+                      "Tu entrenamiento sigue abierto. Intentá nuevamente.",
+                    );
+                  }
                 }}
               />
             )}

@@ -26,7 +26,15 @@ import {
 } from "@myfitnesscoach/contracts";
 import { availableReplacements, replaceRoutineExercise } from "./replacements";
 
-type CardImage = "padel" | "strength" | "mobility" | "amrap";
+type CardImage =
+  | "padel"
+  | "strength"
+  | "mobility"
+  | "amrap"
+  | "landmine"
+  | "boxJump"
+  | "dumbbellRdl"
+  | "battleRopes";
 type Choice = {
   key: string;
   title: string;
@@ -42,6 +50,10 @@ const cardImages = {
   strength: require("../assets/training/strength.jpg"),
   mobility: require("../assets/training/mobility.jpg"),
   amrap: require("../assets/training/amrap.jpg"),
+  landmine: require("../assets/training/landmine.jpg"),
+  boxJump: require("../assets/training/box-jump.jpg"),
+  dumbbellRdl: require("../assets/training/dumbbell-rdl.jpg"),
+  battleRopes: require("../assets/training/battle-ropes.jpg"),
 };
 
 export function TrainingCarousel({
