@@ -30,7 +30,6 @@ import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
-import { makeDailyRoutines } from "./src/daily-routines";
 import { RestTimer, WorkoutClock } from "./src/WorkoutTimer";
 import {
   exercises,
@@ -48,6 +47,7 @@ import {
   type Orientation,
   type Session,
   type Exercise,
+  type DailyTrainingResponse,
   isSessionActive,
 } from "@myfitnesscoach/contracts";
 import * as storage from "./src/storage";
@@ -113,6 +113,8 @@ function Main() {
   const [library, setLibrary] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
   const [todayMenu, setTodayMenu] = useState(false);
+  const [dailyTraining, setDailyTraining] =
+    useState<DailyTrainingResponse | null>(null);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
   const [planWeek, setPlanWeek] = useState(currentWeek());
@@ -134,7 +136,11 @@ function Main() {
         [
           { text: "Seguir entrenando", style: "cancel" },
           { text: "Pausar", onPress: pauseCurrentSession },
-          { text: "Cancelar entrenamiento", style: "destructive", onPress: cancelCurrentSession },
+          {
+            text: "Cancelar entrenamiento",
+            style: "destructive",
+            onPress: cancelCurrentSession,
+          },
         ],
       );
       return true;
@@ -210,25 +216,62 @@ function Main() {
     "figure.highintensity.intervaltraining",
   ] as const;
   const trainingChoices =
-    todayRoutine && effectivePlan && profile
-      ? makeDailyRoutines(
-          todayRoutine,
-          dateKey,
-          finishedForSport.length,
-          profile,
-        ).map(
-          (choice, index) => ({
-            key: choice.key,
-            title:
-              choice.key === "recommended" ? "Sesión recomendada" : choice.name,
-            tag: choice.tag,
-            icon: experienceIcons[index % experienceIcons.length]!,
-            routine: choice.routine,
-            color: experienceColors[index % experienceColors.length]!,
-            image: experienceImages[index % experienceImages.length]!,
-          }),
-        )
+    dailyTraining && dailyTraining.date === dateKey
+      ? dailyTraining.choices.map((choice, index) => ({
+          key: choice.key,
+          title:
+            choice.key === "recommended" ? "Sesión recomendada" : choice.name,
+          tag: choice.tag,
+          icon: experienceIcons[index % experienceIcons.length]!,
+          routine: choice.routine,
+          color: experienceColors[index % experienceColors.length]!,
+          image: experienceImages[index % experienceImages.length]!,
+        }))
       : [];
+  const profileFingerprint = profile ? JSON.stringify(profile) : "";
+  useEffect(() => {
+    if (!ready || !profile || profile.limitations === "review") {
+      setDailyTraining(null);
+      return;
+    }
+    const cached = storage.readDailyTraining(owner, dateKey, orientation);
+    setDailyTraining(cached);
+    if (!online || !url) return;
+    let cancelled = false;
+    api
+      .dailyTraining(url, {
+        date: dateKey,
+        orientation,
+        completedCount: finishedForSport.length,
+        profile,
+      })
+      .then((response) => {
+        if (cancelled) return;
+        storage.cacheDailyTraining(owner, response);
+        setDailyTraining(response);
+        setNotice("Entrenamiento de hoy actualizado");
+      })
+      .catch(() => {
+        if (!cancelled)
+          setNotice(
+            cached
+              ? "Sin conexión · usando el entrenamiento guardado de hoy"
+              : "Conectate para descargar el entrenamiento de hoy",
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    ready,
+    profileFingerprint,
+    owner,
+    dateKey,
+    orientation,
+    online,
+    url,
+    finishedForSport.length,
+  ]);
   function savePlan(next: WeeklyPlan) {
     const key = `plan:${next.input.orientation}:${next.input.week}`;
     const old = storage.readSetting<WeeklyPlan>(owner, key);
@@ -338,7 +381,10 @@ function Main() {
       setTick((value) => value + 1);
       setNotice("Entrenamiento pausado. Podés retomarlo cuando quieras.");
     } catch {
-      Alert.alert("No se pudo pausar", "Tu progreso sigue abierto. Intentá nuevamente.");
+      Alert.alert(
+        "No se pudo pausar",
+        "Tu progreso sigue abierto. Intentá nuevamente.",
+      );
     }
   }
   function cancelCurrentSession() {
@@ -350,7 +396,10 @@ function Main() {
       setTick((value) => value + 1);
       setNotice("Entrenamiento cancelado.");
     } catch {
-      Alert.alert("No se pudo cancelar", "El entrenamiento sigue abierto. Intentá nuevamente.");
+      Alert.alert(
+        "No se pudo cancelar",
+        "El entrenamiento sigue abierto. Intentá nuevamente.",
+      );
     }
   }
   function start(planned?: Routine) {

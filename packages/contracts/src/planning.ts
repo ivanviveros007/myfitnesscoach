@@ -32,6 +32,27 @@ export const profileSchema = z.object({
   jumpReady: z.boolean(),
 });
 export type TrainingProfile = z.infer<typeof profileSchema>;
+export const dailyTrainingRequestSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  orientation: orientationSchema,
+  completedCount: z.number().int().nonnegative(),
+  profile: profileSchema,
+});
+export type DailyTrainingRequest = z.infer<typeof dailyTrainingRequestSchema>;
+export const dailyTrainingChoiceSchema = z.object({
+  key: z.string().min(1).max(40),
+  name: z.string().min(1).max(120),
+  tag: z.string().min(1).max(120),
+  goal: z.string().min(1).max(40),
+  routine: routineSchema,
+});
+export const dailyTrainingResponseSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  orientation: orientationSchema,
+  generatedAt: z.iso.datetime(),
+  choices: z.array(dailyTrainingChoiceSchema).min(1),
+});
+export type DailyTrainingResponse = z.infer<typeof dailyTrainingResponseSchema>;
 export const weekInputSchema = z
   .object({
     week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

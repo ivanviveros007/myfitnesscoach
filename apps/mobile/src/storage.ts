@@ -5,6 +5,8 @@ import {
   cloudDataRecordSchema,
   type Session,
   type CloudDataRecord,
+  dailyTrainingResponseSchema,
+  type DailyTrainingResponse,
 } from "@myfitnesscoach/contracts";
 const db = SQLite.openDatabaseSync("myfitnesscoach.db");
 db.execSync(`PRAGMA journal_mode=WAL;
@@ -221,6 +223,39 @@ export function writeSetting(owner: string, key: string, value: unknown) {
     } as CloudDataRecord);
   else if (/^plan:[a-z-]+:\d{4}-\d{2}-\d{2}$/.test(key))
     queueData(owner, { key, kind: "weekly-plan", value } as CloudDataRecord);
+}
+
+export function readDailyTraining(
+  owner: string,
+  date: string,
+  orientation: string,
+) {
+  const cached = readSetting<unknown>(
+    owner,
+    `daily-training:${date}:${orientation}`,
+  );
+  if (!cached) return null;
+  const parsed = dailyTrainingResponseSchema.safeParse(cached);
+  return parsed.success ? parsed.data : null;
+}
+
+export function cacheDailyTraining(
+  owner: string,
+  value: DailyTrainingResponse,
+) {
+  dailyTrainingResponseSchema.parse(value);
+  db.withTransactionSync(() => {
+    db.runSync(
+      "DELETE FROM settings WHERE owner=? AND key LIKE 'daily-training:%'",
+      owner,
+    );
+    db.runSync(
+      "INSERT INTO settings(owner,key,value) VALUES(?,?,?)",
+      owner,
+      `daily-training:${value.date}:${value.orientation}`,
+      JSON.stringify(value),
+    );
+  });
 }
 
 export function writeSettings(

@@ -7,6 +7,11 @@ import {
   acknowledgeData,
   mergeData,
 } from "./storage";
+import {
+  dailyTrainingRequestSchema,
+  dailyTrainingResponseSchema,
+  type DailyTrainingRequest,
+} from "@myfitnesscoach/contracts";
 export type Account = { token: string; userId: string; url: string };
 export async function restore(): Promise<Account | null> {
   const data = await SecureStore.getItemAsync("fitness-account");
@@ -47,6 +52,16 @@ export async function request(
   } finally {
     clearTimeout(timeout);
   }
+}
+export async function dailyTraining(url: string, input: DailyTrainingRequest) {
+  return dailyTrainingResponseSchema.parse(
+    await request(
+      url,
+      "/training/daily",
+      undefined,
+      dailyTrainingRequestSchema.parse(input),
+    ),
+  );
 }
 let running = false;
 export async function sync(account: Account) {

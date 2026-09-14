@@ -23,10 +23,12 @@ import {
   syncSchema,
   cloudDataSyncSchema,
   exerciseTechniques,
+  dailyTrainingRequestSchema,
 } from "@myfitnesscoach/contracts";
 import { Database } from "./database.js";
 import { Auth, AuthGuard, type UserRequest } from "./auth.js";
 import { Sync } from "./sync.js";
+import { makeDailyRoutines } from "./daily-training.js";
 function parse<T>(
   schema: { safeParse: (x: unknown) => { success: boolean; data?: T } },
   input: unknown,
@@ -48,7 +50,11 @@ class Api {
     return { status: "ok" };
   }
   @Get("catalog") catalog() {
-    return { exercises, orientations, technicalExerciseCount: exerciseTechniques.length };
+    return {
+      exercises,
+      orientations,
+      technicalExerciseCount: exerciseTechniques.length,
+    };
   }
   @Get("catalog/exercises") async technicalExercises(
     @Query("goal") goal?: string,
@@ -64,13 +70,31 @@ class Api {
       goal,
       equipment,
       level,
-      beginnerEligible: beginnerEligible === undefined ? undefined : beginnerEligible === "true",
+      beginnerEligible:
+        beginnerEligible === undefined
+          ? undefined
+          : beginnerEligible === "true",
     });
   }
-  @Get("catalog/exercises/:id") async technicalExercise(@Param("id") id: string) {
+  @Get("catalog/exercises/:id") async technicalExercise(
+    @Param("id") id: string,
+  ) {
     const sheet = await this.db.getExercise(id);
     if (!sheet) throw new NotFoundException("Ejercicio no encontrado.");
     return sheet;
+  }
+  @Post("training/daily") @HttpCode(200) dailyTraining(@Body() body: unknown) {
+    const input = parse(dailyTrainingRequestSchema, body);
+    if (input.profile.limitations === "review")
+      throw new BadRequestException(
+        "El perfil requiere una adaptación revisada antes de generar un entrenamiento.",
+      );
+    return {
+      date: input.date,
+      orientation: input.orientation,
+      generatedAt: new Date().toISOString(),
+      choices: makeDailyRoutines(input),
+    };
   }
   @Post("auth/register") register(@Body() body: unknown) {
     const c = parse(credentialsSchema, body);
