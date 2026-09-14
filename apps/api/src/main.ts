@@ -29,6 +29,8 @@ import { Database } from "./database.js";
 import { Auth, AuthGuard, type UserRequest } from "./auth.js";
 import { Sync } from "./sync.js";
 import { makeDailyRoutines } from "./daily-training.js";
+import { selectDailyExercisesWithAi } from "./ai-training.js";
+import { createHash } from "node:crypto";
 function parse<T>(
   schema: { safeParse: (x: unknown) => { success: boolean; data?: T } },
   input: unknown,
@@ -47,7 +49,7 @@ class Api {
   ) {}
   @Get("health") async health() {
     await this.db.pool.query("SELECT 1");
-    return { status: "ok" };
+    return { status: "ok", ai: process.env.GEMINI_API_KEY ? "ready" : "fallback" };
   }
   @Get("catalog") catalog() {
     return {
@@ -83,18 +85,32 @@ class Api {
     if (!sheet) throw new NotFoundException("Ejercicio no encontrado.");
     return sheet;
   }
-  @Post("training/daily") @HttpCode(200) dailyTraining(@Body() body: unknown) {
+  @Post("training/daily") @HttpCode(200) async dailyTraining(@Body() body: unknown) {
     const input = parse(dailyTrainingRequestSchema, body);
     if (input.profile.limitations === "review")
       throw new BadRequestException(
         "El perfil requiere una adaptación revisada antes de generar un entrenamiento.",
       );
-    return {
+    const generator = process.env.GEMINI_API_KEY ? "gemini-v1" : "rules-v1";
+    const cacheKey = createHash("sha256")
+      .update(`${generator}:${JSON.stringify(input)}`)
+      .digest("hex");
+    const cached = await this.db.getDailyTraining(cacheKey);
+    if (cached) return cached;
+    let selections = null;
+    try {
+      selections = await selectDailyExercisesWithAi(input);
+    } catch (error) {
+      console.warn("Gemini no disponible; se usa el generador validado.", error);
+    }
+    const result = {
       date: input.date,
       orientation: input.orientation,
       generatedAt: new Date().toISOString(),
-      choices: makeDailyRoutines(input),
+      choices: makeDailyRoutines(input, selections ?? undefined),
     };
+    await this.db.cacheDailyTraining(cacheKey, input.date, result);
+    return result;
   }
   @Post("auth/register") register(@Body() body: unknown) {
     const c = parse(credentialsSchema, body);

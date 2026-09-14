@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { template, type TrainingProfile } from "@myfitnesscoach/contracts";
-import { makeDailyRoutines } from "../src/daily-training.js";
+import {
+  dailySelectionCandidates,
+  makeDailyRoutines,
+} from "../src/daily-training.js";
 
 const profile: TrainingProfile = {
   experience: "regular",
@@ -70,5 +73,32 @@ test("HIIT and hypertrophy use their intended formats", () => {
     hypertrophy.routine.blocks
       ?.slice(1, 4)
       .every((block) => block.format === "sets"),
+  );
+});
+
+test("validated AI selections replace exercises only from the allowed block pool", () => {
+  const input = {
+    date: "2026-09-14",
+    orientation: "fitness" as const,
+    completedCount: 0,
+    profile: {
+      experience: "regular" as const,
+      equipment: "gym" as const,
+      limitations: "none" as const,
+      notes: "",
+      jumpReady: true,
+    },
+  };
+  const candidate = dailySelectionCandidates(input)[0]!;
+  const firstBlock = candidate.blocks[0]!;
+  const exerciseIds = firstBlock.candidates
+    .slice(0, firstBlock.count)
+    .map((item) => item.id);
+  const choices = makeDailyRoutines(input, {
+    [candidate.key]: { [firstBlock.position]: exerciseIds },
+  });
+  assert.deepEqual(
+    choices[0]!.routine.blocks![0]!.items.map((item) => item.exercise.id),
+    exerciseIds,
   );
 });

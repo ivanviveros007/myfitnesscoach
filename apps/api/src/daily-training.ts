@@ -44,6 +44,8 @@ type BlockSpec = {
   regions?: string[];
 };
 
+export type DailyExerciseSelections = Record<string, Record<number, string[]>>;
+
 const warmup: BlockSpec = {
   title: "Warm Up",
   goal: "warmup",
@@ -323,8 +325,45 @@ function selectExercises(
     )
       selected.push(candidate);
   }
-  selected.forEach((sheet) => used.add(sheet.exercise.id));
   return selected;
+}
+
+function candidatesForSpec(pool: ExerciseTechnique[], spec: BlockSpec) {
+  const matches = (sheet: ExerciseTechnique, relaxed = false) =>
+    sheet.exercise.goals.some((item) => spec.catalogGoals.includes(item)) &&
+    (relaxed ||
+      ((!spec.patterns ||
+        spec.patterns.some((item) => sheet.exercise.patterns.includes(item))) &&
+        (!spec.regions ||
+          spec.regions.some((item) => sheet.exercise.regions.includes(item)))));
+  const strict = pool.filter((sheet) => matches(sheet));
+  return strict.length ? strict : pool.filter((sheet) => matches(sheet, true));
+}
+
+export function dailySelectionCandidates(input: DailyTrainingRequest) {
+  const pool = classifiedPool(input.profile);
+  return dailyStyles.map(([key, name]) => ({
+    key,
+    name,
+    blocks: [warmup, ...(modalityBlocks[key] ?? modalityBlocks.recommended!)].map(
+      (spec, position) => ({
+        position,
+        title: spec.title,
+        goal: spec.goal,
+        count: spec.count,
+        candidates: candidatesForSpec(pool, spec)
+          .slice(0, 18)
+          .map((sheet) => ({
+            id: sheet.exercise.id,
+            name: sheet.exercise.name.en,
+            goals: sheet.exercise.goals,
+            patterns: sheet.exercise.patterns,
+            regions: sheet.exercise.regions,
+            impact: sheet.exercise.impact,
+          })),
+      }),
+    ),
+  }));
 }
 
 function prescription(sheet: ExerciseTechnique, spec: BlockSpec): Prescription {
@@ -357,7 +396,10 @@ function prescription(sheet: ExerciseTechnique, spec: BlockSpec): Prescription {
   };
 }
 
-export function makeDailyRoutines(input: DailyTrainingRequest) {
+export function makeDailyRoutines(
+  input: DailyTrainingRequest,
+  selections: DailyExerciseSelections = {},
+) {
   const { date: dateKey, completedCount, profile, orientation } = input;
   const base = template(orientation);
   const pool = classifiedPool(profile);
@@ -388,6 +430,20 @@ export function makeDailyRoutines(input: DailyTrainingRequest) {
         selected = pool
           .filter((sheet) => !used.has(sheet.exercise.id))
           .slice(0, Math.max(1, spec.count));
+      const permitted = new Map(
+        candidatesForSpec(pool, spec).map((sheet) => [sheet.exercise.id, sheet]),
+      );
+      const selectedByAi = (selections[key]?.[position] ?? [])
+        .map((id) => permitted.get(id))
+        .filter(
+          (sheet): sheet is ExerciseTechnique =>
+            !!sheet && !used.has(sheet.exercise.id),
+        )
+        .slice(0, spec.count);
+      if (selectedByAi.length === spec.count) {
+        selected = selectedByAi;
+      }
+      selected.forEach((sheet) => used.add(sheet.exercise.id));
       const items = selected.map((sheet) => prescription(sheet, spec));
       return {
         id: `${dateKey}-${key}-${position}`,

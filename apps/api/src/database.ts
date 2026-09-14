@@ -19,6 +19,7 @@ export class Database implements OnModuleInit, OnModuleDestroy {
       CREATE TABLE IF NOT EXISTS exercises (id text PRIMARY KEY, name_es text NOT NULL, name_en text NOT NULL, level text NOT NULL, impact text NOT NULL, active boolean NOT NULL DEFAULT true, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE IF NOT EXISTS exercise_prescriptions (exercise_id text NOT NULL REFERENCES exercises(id) ON DELETE CASCADE, profile text NOT NULL, data jsonb NOT NULL, PRIMARY KEY(exercise_id,profile));
       CREATE TABLE IF NOT EXISTS exercise_substitutions (exercise_id text NOT NULL REFERENCES exercises(id) ON DELETE CASCADE, substitute_id text NOT NULL REFERENCES exercises(id), reason text NOT NULL, priority integer NOT NULL, PRIMARY KEY(exercise_id,substitute_id));
+      CREATE TABLE IF NOT EXISTS daily_training_cache (cache_key text PRIMARY KEY, training_date date NOT NULL, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
     `);
     await this.seedExerciseCatalog();
   }
@@ -86,6 +87,20 @@ export class Database implements OnModuleInit, OnModuleDestroy {
       [id],
     );
     return result.rows[0]?.data;
+  }
+  async getDailyTraining(cacheKey: string): Promise<unknown | undefined> {
+    const result = await this.pool.query<{ data: unknown }>(
+      "SELECT data FROM daily_training_cache WHERE cache_key=$1",
+      [cacheKey],
+    );
+    return result.rows[0]?.data;
+  }
+  async cacheDailyTraining(cacheKey: string, date: string, data: unknown) {
+    await this.pool.query(
+      `INSERT INTO daily_training_cache(cache_key,training_date,data) VALUES($1,$2,$3)
+       ON CONFLICT(cache_key) DO UPDATE SET data=excluded.data,created_at=now()`,
+      [cacheKey, date, JSON.stringify(data)],
+    );
   }
   async onModuleDestroy() {
     await this.pool.end();
