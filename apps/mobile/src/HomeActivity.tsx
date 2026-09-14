@@ -1,8 +1,62 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { Session } from "@myfitnesscoach/contracts";
 
 const dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+function elapsedLabel(session: Session) {
+  const end = session.pausedAt
+    ? new Date(session.pausedAt).getTime()
+    : Date.now();
+  const seconds = Math.max(
+    0,
+    Math.floor((end - new Date(session.startedAt).getTime()) / 1000),
+  );
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export function ActiveWorkoutCard({
+  session,
+  onResume,
+}: {
+  session: Session;
+  onResume: () => void;
+}) {
+  const [, refresh] = useState(0);
+  useEffect(() => {
+    if (session.pausedAt) return;
+    const timer = setInterval(() => refresh((value) => value + 1), 1000);
+    return () => clearInterval(timer);
+  }, [session.pausedAt]);
+  const completed = session.items.filter(
+    (item) => item.status === "completed",
+  ).length;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Retomar ${session.routine.name}`}
+      onPress={onResume}
+      style={({ pressed }) => [s.activeWorkout, pressed && s.activePressed]}
+    >
+      <View style={s.activeTop}>
+        <View style={s.liveBadge}>
+          <View style={s.liveDot} />
+          <Text style={s.liveText}>
+            {session.pausedAt ? "PAUSADO" : "EN CURSO"}
+          </Text>
+        </View>
+        <Text style={s.activeClock}>{elapsedLabel(session)}</Text>
+      </View>
+      <Text style={s.activeTitle}>{session.routine.name}</Text>
+      <View style={s.activeBottom}>
+        <Text style={s.activeProgress}>
+          {completed} de {session.items.length} ejercicios
+        </Text>
+        <Text style={s.activeAction}>Retomar →</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function localKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -145,6 +199,50 @@ const displayFont = Platform.select({
   android: "sans-serif-condensed",
 });
 const s = StyleSheet.create({
+  activeWorkout: {
+    borderRadius: 24,
+    padding: 18,
+    gap: 10,
+    backgroundColor: "#173e34",
+    shadowColor: "#173e34",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  activePressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },
+  activeTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  liveBadge: {
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#263f37",
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#c8ff63" },
+  liveText: { color: "#c8ff63", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  activeClock: { color: "white", fontSize: 22, fontWeight: "900" },
+  activeTitle: {
+    color: "white",
+    fontFamily: Platform.select({ ios: "Avenir Next Condensed", android: "sans-serif-condensed" }),
+    fontSize: 25,
+    lineHeight: 29,
+    fontWeight: "900",
+  },
+  activeBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  activeProgress: { color: "#b8c7bd", fontSize: 11 },
+  activeAction: { color: "#c8ff63", fontSize: 12, fontWeight: "900" },
   calendar: {
     backgroundColor: "white",
     borderRadius: 26,

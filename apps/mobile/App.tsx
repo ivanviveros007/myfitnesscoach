@@ -36,7 +36,11 @@ import { Library } from "./src/Library";
 import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
-import { ActivityTracker, CurrentWeek } from "./src/HomeActivity";
+import {
+  ActiveWorkoutCard,
+  ActivityTracker,
+  CurrentWeek,
+} from "./src/HomeActivity";
 import { RestTimer, WorkoutClock } from "./src/WorkoutTimer";
 import {
   exercises,
@@ -650,10 +654,9 @@ function Main() {
               ))}
             </View>
             {active && (
-              <Button
-                secondary
-                title="Retomar entrenamiento pausado"
-                onPress={() => {
+              <ActiveWorkoutCard
+                session={active.session}
+                onResume={() => {
                   const resumed = resumedSession(active.session);
                   persist(resumed);
                 }}
