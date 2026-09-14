@@ -509,6 +509,8 @@ function Main() {
     });
     setExpandedExercise(null);
     setSwapIndex(null);
+    setSwapWithoutEquipment(false);
+    setNotice(`Ejercicio cambiado por ${replacement.name}`);
   }
   async function authenticate(register: boolean) {
     if (busy) return;
@@ -1294,8 +1296,17 @@ function Main() {
                 {replacements.map((exercise) => (
                   <Pressable
                     key={exercise.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Elegir ${exercise.name}`}
                     style={styles.replacement}
-                    onPress={() => replaceExercise(swapIndex, exercise)}
+                    onPress={() => {
+                      const selectedIndex = swapIndex;
+                      setSwapIndex(null);
+                      setSwapWithoutEquipment(false);
+                      requestAnimationFrame(() =>
+                        replaceExercise(selectedIndex, exercise),
+                      );
+                    }}
                   >
                     <View style={styles.replacementIcon}>
                       <Text style={styles.replacementIconText}>↻</Text>
