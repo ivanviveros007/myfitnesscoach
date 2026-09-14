@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   Vibration,
   View,
@@ -58,6 +59,7 @@ export function TrainingCarousel({
   const [preview, setPreview] = useState<Choice | null>(null);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [withoutEquipment, setWithoutEquipment] = useState(false);
+  const [replacementQuery, setReplacementQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editingBlock, setEditingBlock] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
@@ -82,6 +84,7 @@ export function TrainingCarousel({
         swapPrescription.exercise,
         swapPrescription.block,
         withoutEquipment ? "bodyweight" : equipment,
+        replacementQuery,
       )
     : [];
   const replaceWholeBlock = (blockIndex: number) => {
@@ -232,6 +235,7 @@ export function TrainingCarousel({
         onDismiss={() => {
           setPreview(null);
           setSwapIndex(null);
+          setReplacementQuery("");
           setEditMode(false);
           setEditingBlock(null);
         }}
@@ -337,8 +341,30 @@ export function TrainingCarousel({
               >
                 {swapPrescription ? (
                   <>
+                    <View style={s.catalogSearch}>
+                      <SymbolView
+                        name="magnifyingglass"
+                        size={18}
+                        tintColor="#708277"
+                        weight="medium"
+                      />
+                      <TextInput
+                        accessibilityLabel="Buscar ejercicio en el catálogo"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        clearButtonMode="while-editing"
+                        placeholder="Buscar ejercicio, músculo o material"
+                        placeholderTextColor="#86938b"
+                        value={replacementQuery}
+                        onChangeText={setReplacementQuery}
+                        style={s.catalogSearchInput}
+                      />
+                    </View>
                     <Pressable
-                      onPress={() => setWithoutEquipment((value) => !value)}
+                      onPress={() => {
+                        setWithoutEquipment((value) => !value);
+                        setReplacementQuery("");
+                      }}
                       style={[
                         s.equipmentFilter,
                         withoutEquipment && s.equipmentFilterActive,
@@ -353,6 +379,11 @@ export function TrainingCarousel({
                         {withoutEquipment ? "✓ " : ""}No tengo el material
                       </Text>
                     </Pressable>
+                    <Text style={s.catalogResultCount}>
+                      {replacementQuery
+                        ? `${replacements.length} resultados en el catálogo`
+                        : "Alternativas recomendadas para este bloque"}
+                    </Text>
                     {replacements.map((exercise) => (
                       <Pressable
                         accessibilityRole="button"
@@ -373,6 +404,7 @@ export function TrainingCarousel({
                           );
                           setSwapIndex(null);
                           setWithoutEquipment(false);
+                          setReplacementQuery("");
                         }}
                         style={({ pressed }) => [
                           s.replacementCard,
@@ -398,6 +430,17 @@ export function TrainingCarousel({
                         <Text style={s.replacementArrow}>›</Text>
                       </Pressable>
                     ))}
+                    {!replacements.length && (
+                      <View style={s.emptyCatalog}>
+                        <Text style={s.emptyCatalogTitle}>
+                          No encontramos coincidencias
+                        </Text>
+                        <Text style={s.emptyCatalogText}>
+                          Probá con “sentadilla”, “piernas”, “mancuerna” o
+                          activá “No tengo el material”.
+                        </Text>
+                      </View>
+                    )}
                   </>
                 ) : (
                   previewBlocks.map((block, blockIndex) => (
@@ -924,6 +967,38 @@ const s = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1.5,
   },
+  catalogSearch: {
+    minHeight: 52,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    backgroundColor: "#f8f9f4",
+    borderWidth: 1,
+    borderColor: "#dfe6dc",
+  },
+  catalogSearchInput: {
+    flex: 1,
+    height: 50,
+    color: "#173e34",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  catalogResultCount: {
+    color: "#a9b7ae",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  emptyCatalog: {
+    borderRadius: 18,
+    padding: 18,
+    gap: 5,
+    backgroundColor: "#26332e",
+  },
+  emptyCatalogTitle: { color: "white", fontSize: 14, fontWeight: "900" },
+  emptyCatalogText: { color: "#b8c7bd", fontSize: 12, lineHeight: 18 },
   equipmentFilter: {
     alignSelf: "flex-start",
     borderRadius: 99,

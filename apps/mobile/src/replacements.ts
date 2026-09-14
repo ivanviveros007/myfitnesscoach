@@ -30,6 +30,7 @@ export function availableReplacements(
   current: Exercise,
   block: keyof typeof replacementGroups | undefined,
   equipment: TrainingProfile["equipment"] = "gym",
+  query = "",
 ) {
   const currentSheet = exerciseTechniqueById.get(current.id);
   if (currentSheet) {
@@ -40,9 +41,30 @@ export function availableReplacements(
       notes: "",
       jumpReady: true,
     };
+    const normalizedQuery = query
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
     return exerciseTechniques
       .filter((sheet) => sheet.exercise.id !== current.id)
       .filter((sheet) => compatibleWithProfile(sheet, profile))
+      .filter((sheet) => {
+        if (!normalizedQuery) return true;
+        const searchable = [
+          sheet.exercise.name.es,
+          sheet.exercise.name.en,
+          ...sheet.exercise.equipment,
+          ...sheet.exercise.regions,
+          ...sheet.exercise.patterns,
+          ...sheet.exercise.goals,
+        ]
+          .join(" ")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+        return searchable.includes(normalizedQuery);
+      })
       .map((sheet) => ({
         sheet,
         score:
@@ -54,13 +76,13 @@ export function availableReplacements(
           ).length * 3 +
           (block && sheet.exercise.goals.includes(block) ? 2 : 0),
       }))
-      .filter(({ score }) => score >= 6)
+      .filter(({ score }) => !!normalizedQuery || score >= 6)
       .sort(
         (a, b) =>
           b.score - a.score ||
           a.sheet.exercise.id.localeCompare(b.sheet.exercise.id),
       )
-      .slice(0, 8)
+      .slice(0, normalizedQuery ? 30 : 8)
       .map(({ sheet }) => appExercise(sheet));
   }
   const ids = block
