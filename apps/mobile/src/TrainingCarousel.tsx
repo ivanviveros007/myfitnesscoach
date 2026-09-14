@@ -163,7 +163,18 @@ export function TrainingCarousel({
           const active = choice.key === current.key;
           const content = (
             <>
-              <View style={s.imageShade} />
+              <View style={[s.imageShade, active && s.imageShadeActive]} />
+              {active && (
+                <View style={s.selectedBadge}>
+                  <SymbolView
+                    name="checkmark"
+                    size={12}
+                    tintColor="#173e34"
+                    weight="bold"
+                  />
+                  <Text style={s.selectedBadgeText}>ELEGIDA</Text>
+                </View>
+              )}
               <View style={[s.icon, active && s.iconActive]}>
                 <SymbolView
                   name={choice.icon}
@@ -776,7 +787,11 @@ const s = StyleSheet.create({
     shadowRadius: 14,
     elevation: 4,
   },
-  cardActive: { borderColor: "#c8ff63", transform: [{ translateY: -3 }] },
+  cardActive: {
+    borderColor: "#c8ff63",
+    backgroundColor: "#4f7624",
+    transform: [{ translateY: -3 }],
+  },
   cardPressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
   changeRoutine: {
     minHeight: 64,
@@ -1088,6 +1103,25 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: "rgba(7,30,24,0.38)",
+  },
+  imageShadeActive: { backgroundColor: "rgba(91,132,30,0.5)" },
+  selectedBadge: {
+    position: "absolute",
+    top: 13,
+    right: 13,
+    height: 27,
+    borderRadius: 14,
+    paddingHorizontal: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#c8ff63",
+  },
+  selectedBadgeText: {
+    color: "#173e34",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.8,
   },
   icon: {
     width: 46,
