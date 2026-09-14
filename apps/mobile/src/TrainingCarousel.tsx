@@ -79,6 +79,16 @@ export function TrainingCarousel({
   const current =
     choices.find((choice) => choice.key === selected) ?? choices[0];
   if (!current) return null;
+  const currentGoals = sessionGoals(routineBlocks(current.routine))
+    .map((goal) => goal.label)
+    .slice(0, 2);
+  const estimatedMinutes = current.routine.estimatedMinutes ?? 30;
+  const loadLabel =
+    estimatedMinutes <= 30
+      ? "Ligera"
+      : estimatedMinutes <= 45
+        ? "Moderada"
+        : "Alta";
   const selectNext = () => {
     const index = choices.findIndex((choice) => choice.key === current.key);
     setSelected(choices[(index + 1) % choices.length]?.key ?? current.key);
@@ -148,23 +158,61 @@ export function TrainingCarousel({
   return (
     <View style={s.section}>
       <View style={s.adaptiveBanner}>
-        <View style={s.adaptiveIcon}>
-          <SymbolView name="sparkles" size={17} tintColor="#173e34" weight="bold" />
+        <View style={s.coachTop}>
+          <View style={s.adaptiveIcon}>
+            <SymbolView
+              name="sparkles"
+              size={19}
+              tintColor="#173e34"
+              weight="bold"
+            />
+          </View>
+          <View style={s.adaptiveCopy}>
+            <Text style={s.adaptiveTitle}>TU COACH</Text>
+            <Text style={s.aiSignature}>PERSONALIZADO CON IA</Text>
+          </View>
+          <View style={s.aiStatus}>
+            <View style={s.aiStatusDot} />
+            <Text style={s.aiStatusText}>
+              {isPersonalizing ? "PENSANDO" : "LISTO"}
+            </Text>
+          </View>
         </View>
-        <View style={s.adaptiveCopy}>
-          <Text style={s.adaptiveTitle}>COACH IA · SESIÓN PERSONALIZADA</Text>
-          <Text style={s.adaptiveText}>
-            {isPersonalizing
-              ? "Analizando tu perfil, actividad y equipamiento…"
-              : "La IA eligió y combinó estos bloques según tu perfil, equipamiento e historial."}
-          </Text>
+        <Text style={s.coachHeading}>
+          {isPersonalizing
+            ? "Estoy preparando tu entrenamiento…"
+            : "Preparé tu entrenamiento de hoy"}
+        </Text>
+        <Text style={s.adaptiveText}>
+          {isPersonalizing
+            ? "Estoy analizando tu actividad, perfil y equipamiento."
+            : current.insight ??
+              "Combiné los bloques según tu actividad reciente y el material disponible."}
+        </Text>
+        <View style={s.coachFacts}>
+          <View style={s.coachFact}>
+            <Text style={s.coachFactLabel}>OBJETIVO</Text>
+            <Text numberOfLines={1} style={s.coachFactValue}>
+              {currentGoals.join(" + ") || "Movimiento"}
+            </Text>
+          </View>
+          <View style={s.coachFact}>
+            <Text style={s.coachFactLabel}>CARGA</Text>
+            <Text style={s.coachFactValue}>{loadLabel}</Text>
+          </View>
         </View>
-        <View style={s.aiStatus}>
-          <View style={s.aiStatusDot} />
-          <Text style={s.aiStatusText}>
-            {isPersonalizing ? "PENSANDO" : "LISTO"}
-          </Text>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver por qué el Coach eligió esta sesión"
+          onPress={() => setPreview(current)}
+          style={({ pressed }) => [
+            s.coachAction,
+            pressed && s.cardPressed,
+          ]}
+        >
+          <Text style={s.coachActionText}>Ver por qué elegí esta sesión</Text>
+          <Text style={s.coachActionArrow}>→</Text>
+        </Pressable>
       </View>
       <View>
         <Text style={s.eyebrow}>PROPUESTAS PARA HOY</Text>
@@ -747,14 +795,15 @@ const s = StyleSheet.create({
   section: { gap: 15, marginHorizontal: -22 },
   adaptiveBanner: {
     marginHorizontal: 22,
-    minHeight: 70,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 24,
+    padding: 17,
+    gap: 12,
+    backgroundColor: "#173e34",
+  },
+  coachTop: {
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
-    backgroundColor: "#173e34",
   },
   adaptiveIcon: {
     width: 40,
@@ -766,12 +815,54 @@ const s = StyleSheet.create({
   },
   adaptiveCopy: { flex: 1, gap: 3 },
   adaptiveTitle: {
-    color: "#c8ff63",
-    fontSize: 10,
+    color: "white",
+    fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.2,
   },
-  adaptiveText: { color: "white", fontSize: 12, lineHeight: 17 },
+  aiSignature: {
+    marginTop: 2,
+    color: "#c8ff63",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  coachHeading: {
+    color: "white",
+    fontFamily: displayFont,
+    fontSize: 25,
+    lineHeight: 28,
+    fontWeight: "900",
+  },
+  adaptiveText: { color: "#dbe5dd", fontSize: 12, lineHeight: 18 },
+  coachFacts: { flexDirection: "row", gap: 8 },
+  coachFact: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    gap: 3,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  coachFactLabel: {
+    color: "#91a49a",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  coachFactValue: { color: "white", fontSize: 12, fontWeight: "800" },
+  coachAction: {
+    minHeight: 42,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#c8ff63",
+  },
+  coachActionText: { color: "#173e34", fontSize: 12, fontWeight: "900" },
+  coachActionArrow: { color: "#173e34", fontSize: 20, fontWeight: "900" },
   aiStatus: {
     alignSelf: "flex-start",
     borderRadius: 99,
