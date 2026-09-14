@@ -152,11 +152,17 @@ export function TrainingCarousel({
           <SymbolView name="sparkles" size={17} tintColor="#173e34" weight="bold" />
         </View>
         <View style={s.adaptiveCopy}>
-          <Text style={s.adaptiveTitle}>ENTRENAMIENTO ADAPTATIVO</Text>
+          <Text style={s.adaptiveTitle}>COACH IA · SESIÓN PERSONALIZADA</Text>
           <Text style={s.adaptiveText}>
             {isPersonalizing
-              ? "Actualizando según tu perfil y actividad…"
-              : "Preparado hoy según tu perfil, equipamiento e historial."}
+              ? "Analizando tu perfil, actividad y equipamiento…"
+              : "La IA eligió y combinó estos bloques según tu perfil, equipamiento e historial."}
+          </Text>
+        </View>
+        <View style={s.aiStatus}>
+          <View style={s.aiStatusDot} />
+          <Text style={s.aiStatusText}>
+            {isPersonalizing ? "PENSANDO" : "LISTO"}
           </Text>
         </View>
       </View>
@@ -314,7 +320,7 @@ export function TrainingCarousel({
                   <View style={s.insightCard}>
                     <SymbolView name="sparkles" size={18} tintColor="#c8ff63" weight="bold" />
                     <View style={s.insightCopy}>
-                      <Text style={s.insightTitle}>POR QUÉ ESTA SESIÓN</Text>
+                      <Text style={s.insightTitle}>DECISIÓN DEL COACH IA</Text>
                       <Text style={s.insightText}>
                         {preview.insight ??
                           "Seleccionada según tu perfil, equipamiento y actividad reciente."}
@@ -766,6 +772,28 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
   },
   adaptiveText: { color: "white", fontSize: 12, lineHeight: 17 },
+  aiStatus: {
+    alignSelf: "flex-start",
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(200,255,99,0.12)",
+  },
+  aiStatusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#c8ff63",
+  },
+  aiStatusText: {
+    color: "#c8ff63",
+    fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
   eyebrow: {
     paddingHorizontal: 22,
     fontSize: 10,
