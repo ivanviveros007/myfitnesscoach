@@ -524,17 +524,22 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+        gesture.dx > 2 && Math.abs(gesture.dy) < 80,
+      onMoveShouldSetPanResponderCapture: (_, gesture) =>
+        gesture.dx > 2 && Math.abs(gesture.dy) < 80,
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderMove: (_, gesture) => {
         position.setValue(
-          Math.max(0, Math.min(gesture.dx * 1.22, maxTravelRef.current)),
+          Math.max(0, Math.min(gesture.dx * 1.35, maxTravelRef.current)),
         );
       },
       onPanResponderRelease: (_, gesture) => {
         if (
-          gesture.dx >= maxTravelRef.current * 0.52 ||
-          (gesture.dx > 55 && gesture.vx > 0.65)
+          gesture.dx >= maxTravelRef.current * 0.42 ||
+          (gesture.dx > 42 && gesture.vx > 0.45)
         ) {
           finish();
           return;
