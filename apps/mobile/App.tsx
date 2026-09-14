@@ -4,6 +4,7 @@ import {
   BackHandler,
   Alert,
   AppState,
+  Image,
   Linking,
   Modal,
   Platform,
@@ -601,9 +602,12 @@ function Main() {
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <View style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>M</Text>
-        </View>
+        <Image
+          accessibilityIgnoresInvertColors
+          accessibilityLabel="My Fitness Coach"
+          source={require("./assets/icon.png")}
+          style={styles.brandMark}
+        />
         <View style={styles.brandCopy}>
           <Text style={styles.brand}>MY FITNESS COACH</Text>
           <Text style={styles.subtitle}>
@@ -1486,11 +1490,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "#c8ff63",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#173e34",
   },
-  brandMarkText: { fontSize: 19, fontWeight: "900", color: "#143f37" },
   brandCopy: { flex: 1, paddingHorizontal: 12 },
   brand: {
     fontSize: 12,
