@@ -526,20 +526,20 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: (_, gesture) =>
-        gesture.dx > 2 && Math.abs(gesture.dy) < 80,
+        gesture.dx > 1,
       onMoveShouldSetPanResponderCapture: (_, gesture) =>
-        gesture.dx > 2 && Math.abs(gesture.dy) < 80,
+        gesture.dx > 1,
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
       onPanResponderMove: (_, gesture) => {
         position.setValue(
-          Math.max(0, Math.min(gesture.dx * 1.35, maxTravelRef.current)),
+          Math.max(0, Math.min(gesture.dx * 1.6, maxTravelRef.current)),
         );
       },
       onPanResponderRelease: (_, gesture) => {
         if (
-          gesture.dx >= maxTravelRef.current * 0.42 ||
-          (gesture.dx > 42 && gesture.vx > 0.45)
+          gesture.dx >= maxTravelRef.current * 0.3 ||
+          (gesture.dx > 30 && gesture.vx > 0.25)
         ) {
           finish();
           return;
@@ -551,7 +551,11 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
           bounciness: 5,
         }).start();
       },
-      onPanResponderTerminate: () => {
+      onPanResponderTerminate: (_, gesture) => {
+        if (gesture.dx >= maxTravelRef.current * 0.3) {
+          finish();
+          return;
+        }
         Animated.spring(position, {
           toValue: 0,
           useNativeDriver: false,

@@ -106,11 +106,13 @@ export function ActivityTracker({
               : "Tu semana empieza hoy"}
           </Text>
         </View>
-        <View style={s.streakBadge}>
-          <Text style={s.streakText}>
-            ● {streak} {streak === 1 ? "semana" : "semanas"}
-          </Text>
-        </View>
+        {streak > 0 && (
+          <View style={s.streakBadge}>
+            <Text style={s.streakText}>
+              ● {streak} {streak === 1 ? "semana" : "semanas"}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={s.progressDays}>
         {thisWeek.map((complete, index) => (
