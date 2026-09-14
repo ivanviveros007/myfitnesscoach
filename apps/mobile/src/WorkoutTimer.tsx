@@ -5,7 +5,13 @@ function clock(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function WorkoutClock({ startedAt }: { startedAt: string }) {
+export function WorkoutClock({
+  startedAt,
+  onReset,
+}: {
+  startedAt: string;
+  onReset: () => void;
+}) {
   const [, refresh] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => refresh((value) => value + 1), 1000);
@@ -19,7 +25,14 @@ export function WorkoutClock({ startedAt }: { startedAt: string }) {
     <View style={s.workout}>
       <View style={s.copy}>
         <Text style={s.eyebrow}>TIEMPO DE ENTRENAMIENTO</Text>
-        <Text style={s.help}>Corre desde que comenzaste la sesión</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Reiniciar tiempo de entrenamiento"
+          hitSlop={8}
+          onPress={onReset}
+        >
+          <Text style={s.reset}>↻ Reiniciar tiempo</Text>
+        </Pressable>
       </View>
       <Text style={s.workoutClock}>{clock(elapsed)}</Text>
     </View>
@@ -77,6 +90,13 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   help: { color: "#b8c7bd", fontSize: 11, marginTop: 4 },
+  reset: {
+    color: "#dce8df",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 6,
+    textDecorationLine: "underline",
+  },
   workoutClock: { color: "white", fontSize: 29, fontWeight: "900" },
   rest: {
     minHeight: 62,

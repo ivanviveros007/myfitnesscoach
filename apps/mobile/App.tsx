@@ -379,6 +379,20 @@ function Main() {
       );
     }
   }
+  function resumedSession(current: Session): Session {
+    if (!current.pausedAt) return current;
+    const pausedFor = Math.max(
+      0,
+      Date.now() - new Date(current.pausedAt).getTime(),
+    );
+    return {
+      ...current,
+      startedAt: new Date(
+        new Date(current.startedAt).getTime() + pausedFor,
+      ).toISOString(),
+      pausedAt: null,
+    };
+  }
   function pauseCurrentSession() {
     if (!session || !isSessionActive(session)) return;
     const next = { ...session, pausedAt: new Date().toISOString() };
@@ -418,7 +432,7 @@ function Main() {
           { text: "Ahora no", style: "cancel" },
           {
             text: "Retomar entrenamiento",
-            onPress: () => persist({ ...active.session, pausedAt: null }),
+            onPress: () => persist(resumedSession(active.session)),
           },
         ],
       );
@@ -638,7 +652,7 @@ function Main() {
                 secondary
                 title="Retomar entrenamiento pausado"
                 onPress={() => {
-                  const resumed = { ...active.session, pausedAt: null };
+                  const resumed = resumedSession(active.session);
                   persist(resumed);
                 }}
               />
@@ -773,7 +787,26 @@ function Main() {
               {session.items.filter((i) => i.status === "completed").length} de{" "}
               {session.items.length} ejercicios completos
             </Text>
-            <WorkoutClock startedAt={session.startedAt} />
+            <WorkoutClock
+              startedAt={session.startedAt}
+              onReset={() =>
+                Alert.alert(
+                  "Reiniciar tiempo",
+                  "El contador volverá a 00:00. Tus ejercicios, series y pesos se conservan.",
+                  [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                      text: "Reiniciar",
+                      onPress: () =>
+                        persist({
+                          ...session,
+                          startedAt: new Date().toISOString(),
+                        }),
+                    },
+                  ],
+                )
+              }
+            />
             <AmrapPanel
               session={session}
               onStart={() =>
