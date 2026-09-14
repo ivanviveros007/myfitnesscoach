@@ -578,7 +578,14 @@ function Main() {
         <ActivityIndicator />
       </SafeAreaView>
     );
-  const active = rows.find((r) => isSessionActive(r.session));
+  const active = rows.find(({ session: storedSession }) => {
+    if (!isSessionActive(storedSession)) return false;
+    if (storedSession.pausedAt) return true;
+    return (
+      Date.now() - new Date(storedSession.startedAt).getTime() <
+      8 * 60 * 60 * 1000
+    );
+  });
   const sessionBlockStarts = new Map<
     number,
     ReturnType<typeof routineBlocks>[number]
