@@ -1,4 +1,8 @@
-export type ExerciseOrigin = "bigg-reference" | "dcfit-reference" | "curated";
+export type ExerciseOrigin =
+  | "bigg-reference"
+  | "dcfit-reference"
+  | "web-reference"
+  | "curated";
 export type ExerciseLevel = "beginner" | "intermediate" | "advanced";
 export type ExerciseImpact = "none" | "low" | "medium" | "high";
 export type ExerciseMetric = "reps" | "seconds" | "distance" | "calories";
@@ -26,6 +30,7 @@ export type ClassifiedExercise = {
   doseProfiles: DoseProfile[];
   unilateral?: boolean;
   sourceFrames?: string[];
+  sourceUrl?: string;
 };
 
 const bigg = (
@@ -112,6 +117,40 @@ const dcfit = (
   sourceFrames: [`DC FIT WOD · slide ${slide}`],
   unilateral,
 });
+
+const webReference = (
+  id: string,
+  es: string,
+  en: string,
+  patterns: string[],
+  goals: string[],
+  regions: string[],
+  equipment: string[],
+  level: ExerciseLevel,
+  impact: ExerciseImpact,
+  doseProfiles: DoseProfile[],
+  sourceUrl: string,
+  unilateral = false,
+): ClassifiedExercise => ({
+  id,
+  name: { es, en },
+  origin: "web-reference",
+  patterns,
+  goals,
+  regions,
+  equipment,
+  level,
+  impact,
+  metric: patterns.includes("running") ? "distance" : "reps",
+  doseProfiles,
+  sourceUrl,
+  unilateral,
+});
+
+const functionalCircuits =
+  "https://www.scribd.com/document/796606436/20-circuitos-funcionales";
+const padelGym =
+  "https://conectpadel.com/blog/ejercicios-de-gimnasio-para-padel-mejora-tu-potencia-velocidad-y-resistencia-en-la-pista/";
 
 export const classifiedExercises: ClassifiedExercise[] = [
   bigg("prone-hip-rotation", "Rotación interna y externa de cadera en prono", "Prone Hip Internal-External Rotation", ["hip-rotation"], ["warmup", "mobility"], ["hips"], ["mat"], "beginner", "none", ["warmup", "mobility"], ["IMG_3809", "IMG_3811", "IMG_3815"], true),
@@ -211,6 +250,31 @@ export const classifiedExercises: ClassifiedExercise[] = [
   dcfit("plate-burpee", "Burpee sobre disco", "Plate Burpee", ["burpee"], ["cross-training", "hiit", "conditioning"], ["full-body"], ["weight-plate"], "intermediate", "high", ["interval", "conditioning"], 2),
   dcfit("ground-to-overhead", "Carga del suelo sobre la cabeza", "Ground to Overhead", ["hinge", "pull", "overhead"], ["cross-training", "power", "conditioning"], ["full-body"], ["weight-plate", "dumbbell", "barbell"], "advanced", "medium", ["power", "conditioning"], 2),
 
+  webReference("front-plank", "Plancha frontal", "Front Plank", ["anti-extension", "isometric"], ["midline", "stability"], ["core", "shoulders"], ["mat"], "beginner", "none", ["core-control"], functionalCircuits),
+  webReference("bicycle-crunch", "Abdominal bicicleta", "Bicycle Crunch", ["trunk-flexion", "rotation"], ["midline", "conditioning"], ["core"], ["mat"], "beginner", "none", ["core-control", "conditioning"], functionalCircuits, true),
+  webReference("jump-rope", "Salto de cuerda", "Jump Rope", ["cyclic", "ankle-stiffness"], ["warmup", "hiit", "conditioning"], ["calves", "cardio"], ["jump-rope"], "beginner", "medium", ["warmup", "interval", "conditioning"], functionalCircuits),
+  webReference("kettlebell-clean-press", "Clean y press con kettlebell", "Kettlebell Clean and Press", ["hinge", "clean", "vertical-push"], ["power", "cross-training", "full-body"], ["full-body"], ["kettlebell"], "advanced", "medium", ["power", "conditioning"], functionalCircuits, true),
+  webReference("medicine-ball-slam", "Lanzamiento de balón al suelo", "Medicine Ball Slam", ["throw", "hinge"], ["power", "hiit", "cross-training"], ["full-body"], ["medicine-ball"], "intermediate", "medium", ["power", "interval"], functionalCircuits),
+  webReference("trx-chest-press", "Press de pecho en TRX", "TRX Chest Press", ["horizontal-push"], ["strength", "hypertrophy", "upper-body"], ["chest", "triceps", "core"], ["suspension-trainer"], "intermediate", "none", ["strength", "hypertrophy"], functionalCircuits),
+  webReference("plank-leg-lift", "Plancha con elevación de pierna", "Plank with Leg Lift", ["anti-extension", "hip-extension"], ["midline", "stability"], ["core", "glutes"], ["mat"], "intermediate", "none", ["core-control"], functionalCircuits, true),
+  webReference("battle-rope-slam", "Golpes con cuerda de batalla", "Battle Rope Slam", ["arm-drive", "hinge"], ["hiit", "conditioning", "cross-training"], ["shoulders", "core", "cardio"], ["battle-rope"], "intermediate", "low", ["interval", "conditioning"], functionalCircuits),
+  webReference("spiderman-push-up", "Flexión Spiderman", "Spiderman Push Up", ["horizontal-push", "hip-flexion"], ["strength", "conditioning", "upper-body"], ["chest", "triceps", "core"], ["none"], "advanced", "none", ["strength", "conditioning"], functionalCircuits, true),
+  webReference("kettlebell-snatch", "Snatch con kettlebell", "Kettlebell Snatch", ["hinge", "pull", "overhead"], ["power", "cross-training", "conditioning"], ["full-body"], ["kettlebell"], "advanced", "medium", ["power", "interval"], functionalCircuits, true),
+  webReference("renegade-row", "Remo renegado", "Renegade Row", ["horizontal-pull", "anti-rotation", "plank"], ["strength", "cross-training", "midline"], ["back", "core", "shoulders"], ["dumbbell"], "advanced", "none", ["strength", "core-control"], functionalCircuits, true),
+  webReference("inverted-row", "Remo invertido", "Inverted Row", ["horizontal-pull"], ["strength", "hypertrophy", "upper-body"], ["back", "biceps"], ["bar", "suspension-trainer"], "intermediate", "none", ["strength", "hypertrophy"], functionalCircuits),
+  webReference("trx-triceps-extension", "Extensión de tríceps en TRX", "TRX Triceps Extension", ["elbow-extension"], ["hypertrophy", "upper-body"], ["triceps", "core"], ["suspension-trainer"], "intermediate", "none", ["hypertrophy"], functionalCircuits),
+  webReference("plyometric-push-up", "Flexión pliométrica", "Plyometric Push Up", ["horizontal-push"], ["power", "upper-body", "sport"], ["chest", "triceps"], ["none"], "advanced", "high", ["power"], functionalCircuits),
+  webReference("trx-pike", "Pike en TRX", "TRX Pike", ["plank", "hip-flexion"], ["midline", "strength"], ["core", "shoulders"], ["suspension-trainer"], "advanced", "none", ["core-control", "strength"], functionalCircuits),
+  webReference("rope-climb", "Trepa de cuerda", "Rope Climb", ["vertical-pull", "climb"], ["strength", "cross-training", "full-body"], ["back", "arms", "core"], ["climbing-rope"], "advanced", "medium", ["strength", "conditioning"], functionalCircuits),
+  webReference("single-leg-box-squat", "Sentadilla a cajón a una pierna", "Single-Leg Box Squat", ["squat", "single-leg"], ["strength", "stability", "legs"], ["quads", "glutes"], ["box"], "advanced", "none", ["strength"], functionalCircuits, true),
+  webReference("push-up-rotation", "Flexión con rotación", "Push Up with Rotation", ["horizontal-push", "rotation"], ["strength", "stability", "full-body"], ["chest", "core", "shoulders"], ["none"], "intermediate", "none", ["strength", "core-control"], functionalCircuits, true),
+  webReference("high-knees", "Rodillas altas", "High Knees", ["running", "knee-drive"], ["warmup", "hiit", "conditioning"], ["legs", "cardio"], ["none"], "beginner", "medium", ["warmup", "interval"], functionalCircuits),
+  webReference("sled-pull", "Arrastre de trineo", "Sled Pull", ["locomotion", "pull"], ["strength", "conditioning", "sport"], ["legs", "back", "core"], ["sled"], "intermediate", "low", ["strength", "conditioning"], functionalCircuits),
+  webReference("plank-hip-dip", "Plancha con descenso de cadera", "Plank Hip Dip", ["plank", "rotation"], ["midline", "conditioning"], ["core", "shoulders"], ["mat"], "intermediate", "none", ["core-control"], functionalCircuits, true),
+  webReference("agility-ladder", "Escalera de agilidad", "Agility Ladder Drill", ["footwork", "change-of-direction"], ["transfer", "sport", "padel"], ["legs", "cardio"], ["agility-ladder"], "beginner", "medium", ["warmup", "conditioning"], padelGym),
+  webReference("short-sprint", "Sprint corto", "Short Sprint", ["running", "acceleration"], ["power", "transfer", "sport", "padel"], ["legs", "cardio"], ["none"], "intermediate", "high", ["power", "interval"], padelGym),
+  webReference("cable-triceps-pushdown", "Extensión de tríceps en polea", "Cable Triceps Pushdown", ["elbow-extension"], ["hypertrophy", "upper-body"], ["triceps"], ["cable"], "beginner", "none", ["hypertrophy"], padelGym),
+
   curated("air-squat", "Sentadilla sin carga", "Air Squat", ["squat"], ["warmup", "strength", "conditioning"], ["quads", "glutes"], ["none"], "beginner", "none", ["warmup", "strength", "conditioning"]),
   curated("goblet-squat", "Sentadilla goblet", "Goblet Squat", ["squat"], ["strength", "hypertrophy", "full-body"], ["quads", "glutes"], ["dumbbell", "kettlebell"], "beginner", "none", ["strength", "hypertrophy"]),
   curated("dumbbell-rdl", "Peso muerto rumano con mancuernas", "Dumbbell Romanian Deadlift", ["hinge"], ["strength", "hypertrophy", "full-body"], ["hamstrings", "glutes"], ["dumbbell"], "beginner", "none", ["strength", "hypertrophy"]),
@@ -253,5 +317,6 @@ export const exerciseCatalogStats = {
   total: classifiedExercises.length,
   observedInBigg: classifiedExercises.filter((item) => item.origin === "bigg-reference").length,
   observedInDcfit: classifiedExercises.filter((item) => item.origin === "dcfit-reference").length,
+  observedOnWeb: classifiedExercises.filter((item) => item.origin === "web-reference").length,
   curated: classifiedExercises.filter((item) => item.origin === "curated").length,
 };

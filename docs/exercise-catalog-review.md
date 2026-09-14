@@ -5,6 +5,7 @@
 - 100 capturas `IMG_3801.PNG`–`IMG_3900.PNG` de la carpeta BIGG.
 - La grabación `screen_recording.mov`, usada para entender navegación, composición de bloques y contexto.
 - La presentación dinámica `DC FIT WOD`, revisada el 13 de septiembre de 2026.
+- `20 circuitos funcionales` de Scribd y la guía de gimnasio para pádel de ConectPadel.
 - El catálogo activo de MyFitnessCoach en `packages/contracts/src/catalog.ts` y `packages/contracts/src/index.ts`.
 
 El texto de las capturas se extrajo localmente con Vision de macOS. Los nombres ambiguos o cortados por la interfaz no se incorporaron.
@@ -50,3 +51,5 @@ Por eso el generador tendrá dos filtros. Primero seleccionará movimientos comp
 No se copiaron imágenes, textos descriptivos ni contenido de marca de BIGG. Las capturas se usaron como referencia para identificar nombres y estructuras; las ilustraciones y explicaciones de MyFitnessCoach deberán ser propias o provenir de fuentes autorizadas.
 
 La presentación DC FIT WOD se conserva como una procedencia separada porque su contenido cambia. La revisión actual añadió ejercicios observados en sus siete diapositivas, sin copiar rutinas completas ni asumir que las cargas publicadas son adecuadas para nuestros usuarios.
+
+De los cuatro enlaces adicionales de Scribd, `20 circuitos funcionales` expuso la lista completa en su vista pública. Los documentos `RUTINA`, `Plan de Ejercicios` y `LUNES` solo mostraron títulos o resúmenes, de modo que quedaron registrados como fuentes pendientes y no se extrajeron movimientos inexistentes. ConectPadel permitió confirmar patrones relevantes para pádel como aceleración corta, agilidad, trabajo unilateral y estabilidad antirotacional.
