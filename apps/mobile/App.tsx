@@ -1068,8 +1068,13 @@ function Main() {
               );
             })}
             {!session.finishedAt && (
-              <Button
-                title="Finalizar y guardar sesión"
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Finalizar y guardar sesión"
+                style={({ pressed }) => [
+                  styles.finishWorkout,
+                  pressed && styles.finishWorkoutPressed,
+                ]}
                 onPress={() => {
                   const next = {
                     ...session,
@@ -1087,7 +1092,12 @@ function Main() {
                     );
                   }
                 }}
-              />
+              >
+                <Text style={styles.finishWorkoutText}>
+                  Finalizar y guardar sesión
+                </Text>
+                <Text style={styles.finishWorkoutArrow}>✓</Text>
+              </Pressable>
             )}
             {!!session.finishedAt && (
               <Text style={styles.title}>
@@ -1328,12 +1338,7 @@ function Main() {
                     accessibilityLabel={`Elegir ${exercise.name}`}
                     style={styles.replacement}
                     onPress={() => {
-                      const selectedIndex = swapIndex;
-                      setSwapIndex(null);
-                      setSwapWithoutEquipment(false);
-                      requestAnimationFrame(() =>
-                        replaceExercise(selectedIndex, exercise),
-                      );
+                      replaceExercise(swapIndex, exercise);
                     }}
                   >
                     <View style={styles.replacementIcon}>
@@ -1503,6 +1508,27 @@ const styles = StyleSheet.create({
   },
   statusDotOffline: { backgroundColor: "#c59044" },
   content: { padding: 18, gap: 18, paddingBottom: 40 },
+  finishWorkout: {
+    minHeight: 68,
+    borderRadius: 22,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#c8ff63",
+  },
+  finishWorkoutPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
+  finishWorkoutText: {
+    flex: 1,
+    color: "#173e34",
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  finishWorkoutArrow: {
+    color: "#173e34",
+    fontSize: 24,
+    fontWeight: "900",
+  },
   eyebrow: {
     fontSize: 11,
     letterSpacing: 1.5,
