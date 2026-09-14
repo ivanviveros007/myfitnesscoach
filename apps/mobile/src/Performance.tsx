@@ -3,6 +3,7 @@ import { Platform, View, Text, StyleSheet } from "react-native";
 import { blocks, routineBlocks, type Session } from "@myfitnesscoach/contracts";
 
 export function Performance({ sessions }: { sessions: Session[] }) {
+  sessions = sessions.filter((session) => !session.cancelledAt);
   const done = sessions.filter((session) => session.finishedAt);
   const minutes = done.reduce(
     (total, session) => total + (session.routine.estimatedMinutes ?? 0),

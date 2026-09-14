@@ -15,7 +15,10 @@ export function WeeklyTracker({
 }) {
   const completed = plan.routines.filter((routine) =>
     sessions.some(
-      (session) => session.routine.id === routine.id && session.finishedAt,
+      (session) =>
+        session.routine.id === routine.id &&
+        session.finishedAt &&
+        !session.cancelledAt,
     ),
   ).length;
   return (

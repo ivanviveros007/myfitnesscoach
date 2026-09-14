@@ -48,6 +48,7 @@ import {
   type Orientation,
   type Session,
   type Exercise,
+  isSessionActive,
 } from "@myfitnesscoach/contracts";
 import * as storage from "./src/storage";
 import * as api from "./src/api";
@@ -126,6 +127,17 @@ function Main() {
       setPlanning(false);
     } else if (tab !== "today") {
       setTab("today");
+    } else if (session && isSessionActive(session)) {
+      Alert.alert(
+        "Entrenamiento en curso",
+        "¿Querés pausar la sesión para retomarla después o cancelarla?",
+        [
+          { text: "Seguir entrenando", style: "cancel" },
+          { text: "Pausar", onPress: pauseCurrentSession },
+          { text: "Cancelar entrenamiento", style: "destructive", onPress: cancelCurrentSession },
+        ],
+      );
+      return true;
     } else if (session) {
       setSession(null);
     } else return false;
@@ -317,7 +329,45 @@ function Main() {
       );
     }
   }
+  function pauseCurrentSession() {
+    if (!session || !isSessionActive(session)) return;
+    const next = { ...session, pausedAt: new Date().toISOString() };
+    try {
+      storage.save(owner, next);
+      setSession(null);
+      setTick((value) => value + 1);
+      setNotice("Entrenamiento pausado. Podés retomarlo cuando quieras.");
+    } catch {
+      Alert.alert("No se pudo pausar", "Tu progreso sigue abierto. Intentá nuevamente.");
+    }
+  }
+  function cancelCurrentSession() {
+    if (!session || !isSessionActive(session)) return;
+    const next = { ...session, cancelledAt: new Date().toISOString() };
+    try {
+      storage.save(owner, next);
+      setSession(null);
+      setTick((value) => value + 1);
+      setNotice("Entrenamiento cancelado.");
+    } catch {
+      Alert.alert("No se pudo cancelar", "El entrenamiento sigue abierto. Intentá nuevamente.");
+    }
+  }
   function start(planned?: Routine) {
+    if (active) {
+      Alert.alert(
+        "Ya tenés un entrenamiento pausado",
+        "Retomalo antes de comenzar una nueva sesión para conservar correctamente tu progreso.",
+        [
+          { text: "Ahora no", style: "cancel" },
+          {
+            text: "Retomar entrenamiento",
+            onPress: () => persist({ ...active.session, pausedAt: null }),
+          },
+        ],
+      );
+      return;
+    }
     const routine = planned ?? template(orientation, selected);
     const next: Session = {
       id: Crypto.randomUUID(),
@@ -438,7 +488,7 @@ function Main() {
         <ActivityIndicator />
       </SafeAreaView>
     );
-  const active = rows.find((r) => !r.session.finishedAt);
+  const active = rows.find((r) => isSessionActive(r.session));
   const sessionBlockStarts = new Map<
     number,
     ReturnType<typeof routineBlocks>[number]
@@ -529,8 +579,11 @@ function Main() {
             {active && (
               <Button
                 secondary
-                title="Retomar entrenamiento guardado"
-                onPress={() => setSession(active.session)}
+                title="Retomar entrenamiento pausado"
+                onPress={() => {
+                  const resumed = { ...active.session, pausedAt: null };
+                  persist(resumed);
+                }}
               />
             )}
             {!!trainingChoices.length && (

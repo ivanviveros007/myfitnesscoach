@@ -355,6 +355,8 @@ export const sessionSchema = z
     routine: routineSchema,
     startedAt: z.iso.datetime(),
     finishedAt: z.iso.datetime().nullable(),
+    pausedAt: z.iso.datetime().nullable().optional(),
+    cancelledAt: z.iso.datetime().nullable().optional(),
     amrap: z
       .object({
         durationSeconds: z.number().int().min(60).max(3600),
@@ -392,6 +394,9 @@ export const sessionSchema = z
       ctx.addIssue({ code: "custom", message: "Fecha de cierre inválida." });
   });
 export type Session = z.infer<typeof sessionSchema>;
+export function isSessionActive(session: Session) {
+  return !session.finishedAt && !session.cancelledAt;
+}
 export const syncSchema = z.object({
   operationId: z.uuid(),
   baseVersion: z.number().int().nonnegative(),
