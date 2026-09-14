@@ -1,10 +1,13 @@
 import {
   exercises,
+  exerciseTechniqueById,
+  exerciseTechniques,
   type Exercise,
   type Prescription,
   type Routine,
   type TrainingProfile,
 } from "@myfitnesscoach/contracts";
+import { appExercise, compatibleWithProfile } from "./classified-exercises";
 
 const replacementGroups = {
   warmup: ["leg-swing", "shuffle", "calf-stretch", "child"],
@@ -28,6 +31,38 @@ export function availableReplacements(
   block: keyof typeof replacementGroups | undefined,
   equipment: TrainingProfile["equipment"] = "gym",
 ) {
+  const currentSheet = exerciseTechniqueById.get(current.id);
+  if (currentSheet) {
+    const profile: TrainingProfile = {
+      experience: "regular",
+      equipment,
+      limitations: "none",
+      notes: "",
+      jumpReady: true,
+    };
+    return exerciseTechniques
+      .filter((sheet) => sheet.exercise.id !== current.id)
+      .filter((sheet) => compatibleWithProfile(sheet, profile))
+      .map((sheet) => ({
+        sheet,
+        score:
+          sheet.exercise.patterns.filter((item) =>
+            currentSheet.exercise.patterns.includes(item),
+          ).length * 6 +
+          sheet.exercise.goals.filter((item) =>
+            currentSheet.exercise.goals.includes(item),
+          ).length * 3 +
+          (block && sheet.exercise.goals.includes(block) ? 2 : 0),
+      }))
+      .filter(({ score }) => score >= 6)
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          a.sheet.exercise.id.localeCompare(b.sheet.exercise.id),
+      )
+      .slice(0, 8)
+      .map(({ sheet }) => appExercise(sheet));
+  }
   const ids = block
     ? replacementGroups[block]
     : exercises.map((exercise) => exercise.id);

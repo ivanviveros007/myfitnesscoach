@@ -199,7 +199,12 @@ function Main() {
   ] as const;
   const trainingChoices =
     todayRoutine && effectivePlan && profile
-      ? makeDailyRoutines(todayRoutine, dateKey, finishedForSport.length).map(
+      ? makeDailyRoutines(
+          todayRoutine,
+          dateKey,
+          finishedForSport.length,
+          profile,
+        ).map(
           (choice, index) => ({
             key: choice.key,
             title:

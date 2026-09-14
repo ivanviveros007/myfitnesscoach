@@ -528,11 +528,14 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
         Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
       onPanResponderMove: (_, gesture) => {
         position.setValue(
-          Math.max(0, Math.min(gesture.dx, maxTravelRef.current)),
+          Math.max(0, Math.min(gesture.dx * 1.22, maxTravelRef.current)),
         );
       },
       onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx >= maxTravelRef.current * 0.72) {
+        if (
+          gesture.dx >= maxTravelRef.current * 0.52 ||
+          (gesture.dx > 55 && gesture.vx > 0.65)
+        ) {
           finish();
           return;
         }
@@ -554,6 +557,7 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
 
   return (
     <View
+      {...panResponder.panHandlers}
       accessible
       accessibilityRole="button"
       accessibilityLabel="Deslizá para iniciar el entrenamiento"
@@ -573,15 +577,12 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
         Deslizá para entrenar
       </Text>
       <Animated.View
-        {...panResponder.panHandlers}
-        style={[s.slideThumb, { transform: [{ translateX: position }] }]}
+        hitSlop={{ top: 14, right: 18, bottom: 14, left: 18 }}
+        style={[s.slideThumbTouch, { transform: [{ translateX: position }] }]}
       >
-        <SymbolView
-          name="arrow.right"
-          size={25}
-          tintColor="#173e34"
-          weight="bold"
-        />
+        <View style={s.slideThumb}>
+          <SymbolView name="arrow.right" size={25} tintColor="#173e34" weight="bold" />
+        </View>
       </Animated.View>
     </View>
   );
@@ -904,10 +905,15 @@ const s = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: -0.2,
   },
-  slideThumb: {
+  slideThumbTouch: {
     position: "absolute",
-    left: 5,
-    top: 5,
+    left: 0,
+    top: 0,
+    width: 64,
+    height: 64,
+    padding: 5,
+  },
+  slideThumb: {
     width: 54,
     height: 54,
     borderRadius: 27,
