@@ -17,6 +17,7 @@ import {
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { BottomSheet, RNHostView } from "@expo/ui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
 import {
   routineBlocks,
   type TrainingProfile,
@@ -27,7 +28,8 @@ import {
   type Exercise,
 } from "@myfitnesscoach/contracts";
 import { availableReplacements, replaceRoutineExercise } from "./replacements";
-import { ExerciseDiagram } from "./ExerciseDiagram";
+import { ExerciseVisual } from "./ExerciseVisual";
+import * as api from "./api";
 
 type CardImage =
   | "padel"
@@ -62,11 +64,13 @@ const cardImages = {
 export function TrainingCarousel({
   choices,
   equipment,
+  apiUrl,
   isPersonalizing = false,
   onStart,
 }: {
   choices: Choice[];
   equipment: TrainingProfile["equipment"];
+  apiUrl: string;
   isPersonalizing?: boolean;
   onStart: (routine: Routine) => void;
 }) {
@@ -78,6 +82,12 @@ export function TrainingCarousel({
   const [editMode, setEditMode] = useState(false);
   const [editingBlock, setEditingBlock] = useState<number | null>(null);
   const [demoExercise, setDemoExercise] = useState<Exercise | null>(null);
+  const remoteCatalog = useQuery({
+    queryKey: ["catalog-search", apiUrl, replacementQuery.trim().toLowerCase()],
+    queryFn: () => api.searchCatalog(apiUrl, replacementQuery.trim()),
+    enabled: apiUrl.length > 0 && replacementQuery.trim().length >= 2,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const current =
@@ -105,7 +115,7 @@ export function TrainingCarousel({
   );
   const swapPrescription =
     preview && swapIndex !== null ? preview.routine.items[swapIndex] : null;
-  const replacements = swapPrescription
+  const localReplacements = swapPrescription
     ? availableReplacements(
         swapPrescription.exercise,
         swapPrescription.block,
@@ -113,6 +123,13 @@ export function TrainingCarousel({
         replacementQuery,
       )
     : [];
+  const replacements = replacementQuery.trim().length >= 2
+    ? Array.from(
+        new Map(
+          [...localReplacements, ...(remoteCatalog.data?.items ?? [])].map((item) => [item.id, item]),
+        ).values(),
+      ).slice(0, 60)
+    : localReplacements;
   const replaceWholeBlock = (blockIndex: number) => {
     setPreview((currentPreview) => {
       if (!currentPreview) return currentPreview;
@@ -439,7 +456,7 @@ export function TrainingCarousel({
                 {demoExercise ? (
                   <View style={s.demoContent}>
                     <View style={s.demoDiagram}>
-                      <ExerciseDiagram kind={demoExercise.illustration} />
+                      <ExerciseVisual exercise={demoExercise} />
                     </View>
                     <View style={s.demoSection}>
                       <Text style={s.demoSectionTitle}>CÓMO HACERLO</Text>
@@ -521,8 +538,11 @@ export function TrainingCarousel({
                       </Text>
                     </Pressable>
                     <Text style={s.catalogResultCount}>
+                      {remoteCatalog.isFetching
+                        ? "Buscando en más de 1.000 movimientos…"
+                        : null}
                       {replacementQuery
-                        ? `${replacements.length} resultados en el catálogo`
+                        ? `${remoteCatalog.data?.total ?? replacements.length} resultados en el catálogo`
                         : "Alternativas recomendadas para este bloque"}
                     </Text>
                     {replacements.map((exercise) => (

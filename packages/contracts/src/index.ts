@@ -71,6 +71,8 @@ export const exerciseSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]{11}$/)
     .optional(),
   videoUrl: z.url().optional(),
+  imageUrls: z.array(z.string().min(1)).max(4).optional(),
+  catalogSource: z.enum(["curated", "free-exercise-db"]).optional(),
   sourceUrl: z.url(),
 });
 export type Exercise = z.infer<typeof exerciseSchema>;

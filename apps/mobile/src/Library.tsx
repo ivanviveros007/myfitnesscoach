@@ -8,10 +8,13 @@ import {
   StyleSheet,
 } from "react-native";
 import { exercises, type Exercise } from "@myfitnesscoach/contracts";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "./AppButton";
+import * as api from "./api";
 
 export function Library({
   favorites,
+  apiUrl,
   selected,
   onFavorite,
   onSelect,
@@ -19,6 +22,7 @@ export function Library({
   onStart,
 }: {
   favorites: string[];
+  apiUrl: string;
   selected: string[];
   onFavorite: (id: string) => void;
   onSelect: (id: string) => void;
@@ -26,11 +30,20 @@ export function Library({
   onStart: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const visible = exercises.filter((exercise) =>
+  const catalog = useQuery({
+    queryKey: ["library-catalog", apiUrl, query.trim().toLowerCase()],
+    queryFn: () => api.searchCatalog(apiUrl, query.trim()),
+    enabled: apiUrl.length > 0 && query.trim().length >= 2,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+  const local = exercises.filter((exercise) =>
     `${exercise.name} ${exercise.muscles} ${exercise.equipment}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
+  const visible = query.trim().length >= 2
+    ? catalog.data?.items ?? local
+    : local;
   return (
     <View style={s.container}>
       <Text style={s.kicker}>MI BIBLIOTECA</Text>
@@ -44,6 +57,8 @@ export function Library({
         placeholder="Buscar por movimiento, músculo o material"
         style={s.search}
       />
+      {catalog.isFetching && <Text style={s.meta}>Buscando en más de 1.000 movimientos…</Text>}
+      {!!catalog.data && <Text style={s.meta}>{catalog.data.total} movimientos encontrados</Text>}
       {selected.length > 0 && (
         <View style={s.selection}>
           <Text style={s.selectionText}>{selected.length} seleccionados</Text>
@@ -59,7 +74,7 @@ export function Library({
             <Text style={s.link}>Ver demostración →</Text>
           </Pressable>
           <View style={s.actions}>
-            <Pressable
+            {exercise.catalogSource !== "free-exercise-db" && <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: selected.includes(exercise.id) }}
               onPress={() => onSelect(exercise.id)}
@@ -68,7 +83,7 @@ export function Library({
               <Text style={s.actionText}>
                 {selected.includes(exercise.id) ? "✓" : "+"}
               </Text>
-            </Pressable>
+            </Pressable>}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={

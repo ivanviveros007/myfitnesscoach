@@ -10,7 +10,9 @@ import {
 import {
   dailyTrainingRequestSchema,
   dailyTrainingResponseSchema,
+  exerciseSchema,
   type DailyTrainingRequest,
+  type Exercise,
 } from "@myfitnesscoach/contracts";
 export type Account = { token: string; userId: string; url: string };
 export async function restore(): Promise<Account | null> {
@@ -62,6 +64,22 @@ export async function dailyTraining(url: string, input: DailyTrainingRequest) {
       dailyTrainingRequestSchema.parse(input),
     ),
   );
+}
+export async function searchCatalog(url: string, query: string) {
+  const result = await request(
+    url,
+    `/catalog/search?q=${encodeURIComponent(query)}&limit=60`,
+  );
+  const base = url.replace(/\/$/, "");
+  return {
+    total: Number(result.total ?? 0),
+    items: exerciseSchema.array().parse(result.items).map((item: Exercise) => ({
+      ...item,
+      imageUrls: item.imageUrls?.map((image) =>
+        image.startsWith("http") ? image : `${base}${image}`,
+      ),
+    })),
+  };
 }
 let running = false;
 export async function sync(account: Account) {

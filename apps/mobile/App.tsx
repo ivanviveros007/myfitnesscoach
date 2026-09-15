@@ -70,7 +70,7 @@ import {
 } from "@myfitnesscoach/contracts";
 import * as storage from "./src/storage";
 import * as api from "./src/api";
-import { ExerciseDiagram } from "./src/ExerciseDiagram";
+import { ExerciseVisual } from "./src/ExerciseVisual";
 import {
   availableReplacements,
   replaceRoutineExercise,
@@ -720,6 +720,7 @@ function Main() {
                 <TrainingCarousel
                   choices={trainingChoices}
                   equipment={profile?.equipment ?? "gym"}
+                  apiUrl={url}
                   isPersonalizing={dailyTrainingQuery.isFetching}
                   onStart={start}
                 />
@@ -742,6 +743,7 @@ function Main() {
                       ].includes(choice.key),
                     )}
                     equipment={profile.equipment}
+                    apiUrl={url}
                     isPersonalizing={dailyTrainingQuery.isFetching}
                     onStart={(routine) =>
                       start({ ...routine, trainingMode: "classic" })
@@ -970,7 +972,7 @@ function Main() {
                     />
                     {expandedExercise === p.exercise.id && (
                       <View style={styles.demoPanel}>
-                        <ExerciseDiagram kind={p.exercise.illustration} />
+                        <ExerciseVisual exercise={p.exercise} />
                         <Text style={styles.body}>{p.exercise.steps[0]}</Text>
                         <Pressable
                           onPress={() => {
@@ -1177,6 +1179,7 @@ function Main() {
         {tab === "account" &&
           (library ? (
             <Library
+              apiUrl={url}
               favorites={favoriteMovements}
               selected={selected}
               onFavorite={(id) => {
@@ -1450,7 +1453,7 @@ function Main() {
                 <Text style={styles.muted}>
                   {detail.muscles} · {detail.equipment}
                 </Text>
-                <ExerciseDiagram kind={detail.illustration} />
+                <ExerciseVisual exercise={detail} />
                 <Text style={styles.muted}>
                   Ilustración esquemática · inicio y movimiento
                 </Text>

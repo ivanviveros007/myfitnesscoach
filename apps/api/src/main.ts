@@ -13,8 +13,10 @@ import {
   Query,
   Param,
   NotFoundException,
+  Res,
+  StreamableFile,
 } from "@nestjs/common";
-import { json } from "express";
+import { json, type Response } from "express";
 import helmet from "helmet";
 import {
   credentialsSchema,
@@ -31,6 +33,14 @@ import { Sync } from "./sync.js";
 import { makeDailyRoutines } from "./daily-training.js";
 import { selectDailyExercisesWithAi } from "./ai-training.js";
 import { createHash } from "node:crypto";
+import { createReadStream, existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { appExercise } from "./training-catalog.js";
+import {
+  freeExerciseByExternalId,
+  freeExercises,
+  searchFreeExercises,
+} from "./free-catalog.js";
 function parse<T>(
   schema: { safeParse: (x: unknown) => { success: boolean; data?: T } },
   input: unknown,
@@ -56,7 +66,56 @@ class Api {
       exercises,
       orientations,
       technicalExerciseCount: exerciseTechniques.length,
+      expandedExerciseCount: freeExercises.length,
+      totalCatalogCount: exerciseTechniques.length + freeExercises.length,
     };
+  }
+  @Get("catalog/search") catalogSearch(
+    @Query("q") query = "",
+    @Query("limit") rawLimit = "40",
+    @Query("offset") rawOffset = "0",
+  ) {
+    const limit = Math.min(80, Math.max(1, Number(rawLimit) || 40));
+    const offset = Math.max(0, Number(rawOffset) || 0);
+    const normalized = query.trim().toLowerCase();
+    const curated = exerciseTechniques
+      .map(appExercise)
+      .filter((item) =>
+        `${item.name} ${item.muscles} ${item.equipment}`
+          .toLowerCase()
+          .includes(normalized),
+      )
+      .map((item) => ({ ...item, catalogSource: "curated" as const }));
+    const expanded = searchFreeExercises(query, freeExercises.length, 0).items;
+    const names = new Set(curated.map((item) => item.name.toLowerCase()));
+    const merged = [
+      ...curated,
+      ...expanded.filter((item) => !names.has(item.name.toLowerCase())),
+    ];
+    return {
+      total: merged.length,
+      items: merged.slice(offset, offset + limit),
+      limit,
+      offset,
+    };
+  }
+  @Get("catalog/media/:id/:frame") catalogMedia(
+    @Param("id") id: string,
+    @Param("frame") rawFrame: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const item = freeExerciseByExternalId(id);
+    const frame = Number(rawFrame);
+    const relative = Number.isInteger(frame) ? item?.imagePaths[frame] : undefined;
+    if (!relative) throw new NotFoundException("Imagen no encontrada.");
+    const root = process.env.FREE_EXERCISE_DB_IMAGES ??
+      "/Users/ivanviveros/myfitnesscoach-data/free-exercise-db/exercises";
+    const file = resolve(root, relative);
+    if (!file.startsWith(resolve(root)) || !existsSync(file))
+      throw new NotFoundException("Imagen no disponible en este servidor.");
+    response.setHeader("Content-Type", "image/jpeg");
+    response.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+    return new StreamableFile(createReadStream(file));
   }
   @Get("catalog/exercises") async technicalExercises(
     @Query("goal") goal?: string,
