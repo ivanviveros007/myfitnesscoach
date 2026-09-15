@@ -16,6 +16,8 @@ import {
   type WeekInput,
   type WeeklyPlan,
   type Orientation,
+  type FitnessGoal,
+  type TrainingPreference,
 } from "@myfitnesscoach/contracts";
 import { Button } from "./AppButton";
 function Choices<T extends string | number>({
@@ -69,6 +71,13 @@ export function WeekPlanner({
   >(profile?.limitations ?? null);
   const [notes, setNotes] = useState(profile?.notes ?? "");
   const [jumpReady, setJumpReady] = useState(profile?.jumpReady ?? false);
+  const [trainingPreference, setTrainingPreference] =
+    useState<TrainingPreference>(profile?.trainingPreference ?? "coach");
+  const [goals, setGoals] = useState<FitnessGoal[]>(profile?.goals ?? []);
+  const [goalNote, setGoalNote] = useState(profile?.goalNote ?? "");
+  const [classicDaysPerWeek, setClassicDaysPerWeek] = useState<2 | 3 | 4 | 5>(
+    (profile?.classicDaysPerWeek as 2 | 3 | 4 | 5 | undefined) ?? 3,
+  );
   const [week, setWeek] = useState(previous?.input.week ?? currentWeek());
   const days = previous?.input.days ?? [0, 2, 4, 6];
   const [sportDays, setSportDays] = useState<number[]>(
@@ -80,7 +89,7 @@ export function WeekPlanner({
     [readiness, setReadiness] = useState<WeekInput["readiness"]>(
       previous?.input.readiness ?? "normal",
     );
-  const complete = experience && equipment && limitations;
+  const complete = experience && equipment && limitations && goals.length > 0;
   function create() {
     if (!complete) return;
     try {
@@ -91,6 +100,10 @@ export function WeekPlanner({
           limitations,
           notes,
           jumpReady,
+          trainingPreference,
+          goals,
+          goalNote,
+          classicDaysPerWeek,
         }),
         { week, orientation, days, sportDays, minutes, readiness },
       );
@@ -106,6 +119,80 @@ export function WeekPlanner({
         No necesitás anticipar cuántas veces vas a venir. Con estos datos
         prepararemos la mejor próxima sesión cada vez que entrenes.
       </Text>
+      <Text style={s.label}>¿Cómo querés entrenar?</Text>
+      <Choices
+        values={[
+          ["coach", "El Coach decide por mí"],
+          ["builder", "Quiero armar los bloques"],
+          ["classic", "Rutina clásica de gimnasio"],
+        ]}
+        value={trainingPreference}
+        onChange={setTrainingPreference}
+      />
+      <Text style={s.label}>¿Qué querés mejorar primero?</Text>
+      <Text style={s.body}>
+        Elegí hasta tres. El Coach usará esto como propósito de cada propuesta.
+      </Text>
+      <View style={s.choices}>
+        {(
+          [
+            ["speed", "Velocidad"],
+            ["power", "Potencia"],
+            ["sport-performance", "Rendimiento deportivo"],
+            ["strength", "Fuerza"],
+            ["endurance", "Resistencia"],
+            ["muscle-gain", "Ganar músculo"],
+            ["mobility", "Movilidad"],
+            ["general-fitness", "Estado físico general"],
+          ] as [FitnessGoal, string][]
+        ).map(([key, label]) => {
+          const active = goals.includes(key);
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: active }}
+              onPress={() =>
+                setGoals((current) =>
+                  active
+                    ? current.filter((goal) => goal !== key)
+                    : current.length < 3
+                      ? [...current, key]
+                      : current,
+                )
+              }
+              style={[s.chip, active && s.selected]}
+            >
+              <Text style={[s.text, active && { color: "white" }]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <TextInput
+        multiline
+        value={goalNote}
+        onChangeText={setGoalNote}
+        maxLength={300}
+        placeholder="Ej.: quiero ser más rápido, potente y rematar más fuerte en pádel"
+        style={s.input}
+      />
+      {trainingPreference === "classic" && (
+        <>
+          <Text style={s.label}>Días de gimnasio por semana</Text>
+          <Choices
+            values={[
+              [2, "2 días"],
+              [3, "3 días"],
+              [4, "4 días"],
+              [5, "5 días"],
+            ]}
+            value={classicDaysPerWeek}
+            onChange={setClassicDaysPerWeek}
+          />
+        </>
+      )}
       <Text style={s.label}>Experiencia con fuerza</Text>
       <Choices
         values={[

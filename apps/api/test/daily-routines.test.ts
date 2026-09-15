@@ -76,6 +76,29 @@ test("HIIT and hypertrophy use their intended formats", () => {
   );
 });
 
+test("the recommended routine follows the user's declared goal", () => {
+  const power = makeDailyRoutines({
+    orientation: "padel",
+    date: "2026-09-15",
+    completedCount: 0,
+    profile: { ...profile, goals: ["power", "sport-performance"] },
+  })[0]!;
+  const muscle = makeDailyRoutines({
+    orientation: "fitness",
+    date: "2026-09-15",
+    completedCount: 0,
+    profile: { ...profile, goals: ["muscle-gain"] },
+  })[0]!;
+  assert.ok(power.routine.blocks?.some((block) => block.goal === "power"));
+  assert.ok(
+    muscle.routine.blocks?.some((block) => block.title === "Lower Body"),
+  );
+  assert.notDeepEqual(
+    power.routine.blocks?.slice(1).map((block) => block.goal),
+    muscle.routine.blocks?.slice(1).map((block) => block.goal),
+  );
+});
+
 test("validated AI selections replace exercises only from the allowed block pool", () => {
   const input = {
     date: "2026-09-14",

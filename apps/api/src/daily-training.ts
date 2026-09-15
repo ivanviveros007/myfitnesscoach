@@ -274,6 +274,21 @@ const modalityBlocks: Record<string, BlockSpec[]> = {
   ],
 };
 
+function recommendedBlocks(profile: TrainingProfile): BlockSpec[] {
+  const goals = new Set(profile.goals ?? []);
+  if (
+    goals.has("power") ||
+    goals.has("speed") ||
+    goals.has("sport-performance")
+  )
+    return modalityBlocks.sport!;
+  if (goals.has("muscle-gain")) return modalityBlocks.hypertrophy!;
+  if (goals.has("strength")) return modalityBlocks.strength!;
+  if (goals.has("endurance")) return modalityBlocks.hrx!;
+  if (goals.has("mobility")) return modalityBlocks.pilates!;
+  return modalityBlocks.recommended!;
+}
+
 const hash = (value: string) =>
   [...value].reduce(
     (total, char) => (total * 31 + char.charCodeAt(0)) >>> 0,
@@ -345,24 +360,27 @@ export function dailySelectionCandidates(input: DailyTrainingRequest) {
   return dailyStyles.map(([key, name]) => ({
     key,
     name,
-    blocks: [warmup, ...(modalityBlocks[key] ?? modalityBlocks.recommended!)].map(
-      (spec, position) => ({
-        position,
-        title: spec.title,
-        goal: spec.goal,
-        count: spec.count,
-        candidates: candidatesForSpec(pool, spec)
-          .slice(0, 18)
-          .map((sheet) => ({
-            id: sheet.exercise.id,
-            name: sheet.exercise.name.en,
-            goals: sheet.exercise.goals,
-            patterns: sheet.exercise.patterns,
-            regions: sheet.exercise.regions,
-            impact: sheet.exercise.impact,
-          })),
-      }),
-    ),
+    blocks: [
+      warmup,
+      ...(key === "recommended"
+        ? recommendedBlocks(input.profile)
+        : (modalityBlocks[key] ?? modalityBlocks.recommended!)),
+    ].map((spec, position) => ({
+      position,
+      title: spec.title,
+      goal: spec.goal,
+      count: spec.count,
+      candidates: candidatesForSpec(pool, spec)
+        .slice(0, 18)
+        .map((sheet) => ({
+          id: sheet.exercise.id,
+          name: sheet.exercise.name.en,
+          goals: sheet.exercise.goals,
+          patterns: sheet.exercise.patterns,
+          regions: sheet.exercise.regions,
+          impact: sheet.exercise.impact,
+        })),
+    })),
   }));
 }
 
@@ -411,7 +429,9 @@ export function makeDailyRoutines(
     );
     const specs = [
       warmup,
-      ...(modalityBlocks[key] ?? modalityBlocks.recommended!),
+      ...(key === "recommended"
+        ? recommendedBlocks(profile)
+        : (modalityBlocks[key] ?? modalityBlocks.recommended!)),
     ];
     const blocks = specs.map((spec, position): WorkoutBlock => {
       let selected = selectExercises(
@@ -432,7 +452,10 @@ export function makeDailyRoutines(
           .filter((sheet) => !used.has(sheet.exercise.id))
           .slice(0, Math.max(1, spec.count));
       const permitted = new Map(
-        candidatesForSpec(pool, spec).map((sheet) => [sheet.exercise.id, sheet]),
+        candidatesForSpec(pool, spec).map((sheet) => [
+          sheet.exercise.id,
+          sheet,
+        ]),
       );
       const selectedByAi = (selections[key]?.[position] ?? [])
         .map((id) => permitted.get(id))
@@ -477,16 +500,25 @@ export function makeDailyRoutines(
         0,
       ),
     });
+    const purpose = profile.goalNote?.trim() || profile.goals?.join(", ");
     const fallbackInsight =
       key === "recommended"
-        ? `Combina ${blocks.slice(1, 4).map((block) => block.title.toLowerCase()).join(", ")} según tu perfil y el entrenamiento de hoy.`
-        : `${name} combina bloques de ${blocks.slice(1, 4).map((block) => block.title.toLowerCase()).join(", ")} con ejercicios compatibles con tu equipamiento.`;
+        ? `Combina ${blocks
+            .slice(1, 4)
+            .map((block) => block.title.toLowerCase())
+            .join(
+              ", ",
+            )}${purpose ? ` para acompañar tu objetivo: ${purpose}` : " según tu perfil y el entrenamiento de hoy"}.`
+        : `${name} combina bloques de ${blocks
+            .slice(1, 4)
+            .map((block) => block.title.toLowerCase())
+            .join(", ")} con ejercicios compatibles con tu equipamiento.`;
     return {
       key,
       name,
       tag,
       goal,
-      insight: insights[key] ?? fallbackInsight,
+      insight: (insights[key] ?? fallbackInsight).slice(0, 280),
       routine,
     };
   });

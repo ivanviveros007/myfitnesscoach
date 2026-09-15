@@ -38,6 +38,11 @@ import { AmrapPanel } from "./src/AmrapPanel";
 import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
 import {
+  ClassicIntro,
+  TrainingModeSelector,
+  WorkoutBuilder,
+} from "./src/TrainingModeHome";
+import {
   ActiveWorkoutCard,
   ActivityTracker,
   CurrentWeek,
@@ -60,6 +65,8 @@ import {
   type Session,
   type Exercise,
   isSessionActive,
+  profileSchema,
+  type TrainingPreference,
 } from "@myfitnesscoach/contracts";
 import * as storage from "./src/storage";
 import * as api from "./src/api";
@@ -306,6 +313,18 @@ function Main() {
     setPlanWeek(next.input.week);
     setPlanning(false);
     setTick((t) => t + 1);
+  }
+  function changeTrainingPreference(preference: TrainingPreference) {
+    if (!profile) {
+      setPlanning(true);
+      return;
+    }
+    const next = profileSchema.parse({
+      ...profile,
+      trainingPreference: preference,
+    });
+    storage.writeSetting(owner, "profile", next);
+    setTick((value) => value + 1);
   }
   useEffect(() => {
     api
@@ -687,14 +706,49 @@ function Main() {
                 }}
               />
             )}
-            {!!trainingChoices.length && (
-              <TrainingCarousel
-                choices={trainingChoices}
-                equipment={profile?.equipment ?? "gym"}
-                isPersonalizing={dailyTrainingQuery.isFetching}
-                onStart={start}
+            {profile && (
+              <TrainingModeSelector
+                value={profile.trainingPreference ?? "coach"}
+                goals={profile.goals ?? []}
+                goalNote={profile.goalNote}
+                onChange={changeTrainingPreference}
+                onEditGoal={() => setPlanning(true)}
               />
             )}
+            {!!trainingChoices.length &&
+              (profile?.trainingPreference ?? "coach") === "coach" && (
+                <TrainingCarousel
+                  choices={trainingChoices}
+                  equipment={profile?.equipment ?? "gym"}
+                  isPersonalizing={dailyTrainingQuery.isFetching}
+                  onStart={start}
+                />
+              )}
+            {!!trainingChoices.length &&
+              profile?.trainingPreference === "builder" && (
+                <WorkoutBuilder choices={trainingChoices} onStart={start} />
+              )}
+            {!!trainingChoices.length &&
+              profile?.trainingPreference === "classic" && (
+                <>
+                  <ClassicIntro days={profile.classicDaysPerWeek ?? 3} />
+                  <TrainingCarousel
+                    choices={trainingChoices.filter((choice) =>
+                      [
+                        "hypertrophy",
+                        "strength",
+                        "upper",
+                        "full-body",
+                      ].includes(choice.key),
+                    )}
+                    equipment={profile.equipment}
+                    isPersonalizing={dailyTrainingQuery.isFetching}
+                    onStart={(routine) =>
+                      start({ ...routine, trainingMode: "classic" })
+                    }
+                  />
+                </>
+              )}
             {!!trainingChoices.length && (
               <ActivityTracker
                 sessions={rows.map((row) => row.session)}

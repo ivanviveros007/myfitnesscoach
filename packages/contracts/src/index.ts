@@ -156,6 +156,8 @@ export const trainingModeSchema = z.enum([
   "planned",
   "amrap",
   "free",
+  "builder",
+  "classic",
   "legacy",
 ]);
 export const blockFormatSchema = z.enum([

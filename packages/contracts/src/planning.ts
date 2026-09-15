@@ -24,12 +24,29 @@ export const blocks = {
   stability: "Estabilidad",
   flexibility: "Flexibilidad",
 };
+export const trainingPreferenceSchema = z.enum(["coach", "builder", "classic"]);
+export const fitnessGoalSchema = z.enum([
+  "speed",
+  "power",
+  "sport-performance",
+  "strength",
+  "endurance",
+  "muscle-gain",
+  "mobility",
+  "general-fitness",
+]);
+export type TrainingPreference = z.infer<typeof trainingPreferenceSchema>;
+export type FitnessGoal = z.infer<typeof fitnessGoalSchema>;
 export const profileSchema = z.object({
   experience: z.enum(["new", "regular"]),
   equipment: z.enum(["bodyweight", "dumbbells", "gym"]),
   limitations: z.enum(["none", "review"]),
   notes: z.string().max(1000),
   jumpReady: z.boolean(),
+  trainingPreference: trainingPreferenceSchema.optional(),
+  goals: z.array(fitnessGoalSchema).max(3).optional(),
+  goalNote: z.string().max(300).optional(),
+  classicDaysPerWeek: z.number().int().min(2).max(5).optional(),
 });
 export type TrainingProfile = z.infer<typeof profileSchema>;
 export const dailyTrainingRequestSchema = z.object({
