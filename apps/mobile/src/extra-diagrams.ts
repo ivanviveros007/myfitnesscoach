@@ -1,6 +1,18 @@
 // Original side/front-view schematics. Coordinates are local to each 150×145 panel.
 export type Pose = { head: [number, number]; body: string; equipment?: string };
 export const extraDiagrams: Record<string, [Pose, Pose]> = {
+  "single-leg-hinge": [
+    {
+      head: [70, 23],
+      body: "M70 40 L70 86 L58 136 M70 86 L92 117 M70 48 L56 92 M71 48 L84 92",
+      equipment: "M47 96 L65 96 M75 96 L93 96",
+    },
+    {
+      head: [112, 55],
+      body: "M99 62 L62 78 L48 112 L44 137 M62 78 L18 77 M95 67 L90 113 M88 67 L79 111",
+      equipment: "M81 116 L99 116 M70 113 L88 113",
+    },
+  ],
   goblet: [
     {
       head: [75, 25],

@@ -33,11 +33,19 @@ const illustrationByPattern: Record<string, Exercise["illustration"]> = {
   "hip-rotation": "leg-swing",
 };
 
+const illustrationByExercise: Partial<
+  Record<string, Exercise["illustration"]>
+> = {
+  "single-leg-rdl": "single-leg-hinge",
+};
+
 export function appExercise(sheet: ExerciseTechnique): Exercise {
   const illustration =
+    illustrationByExercise[sheet.exercise.id] ??
     sheet.exercise.patterns
       .map((pattern) => illustrationByPattern[pattern])
-      .find(Boolean) ?? "bird-dog";
+      .find(Boolean) ??
+    "bird-dog";
   return {
     id: sheet.exercise.id,
     name: sheet.exercise.name.es,

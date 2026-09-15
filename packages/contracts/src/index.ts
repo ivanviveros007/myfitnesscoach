@@ -54,6 +54,7 @@ export const exerciseSchema = z.object({
     "bird-dog",
     "goblet",
     "hinge",
+    "single-leg-hinge",
     "push",
     "row",
     "db-row",
