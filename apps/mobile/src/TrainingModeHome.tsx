@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 import {
   routineBlocks,
@@ -9,6 +9,7 @@ import {
   type TrainingPreference,
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
+import { ExerciseDiagram } from "./ExerciseDiagram";
 
 export const goalLabels: Record<FitnessGoal, string> = {
   speed: "Velocidad",
@@ -19,6 +20,15 @@ export const goalLabels: Record<FitnessGoal, string> = {
   "muscle-gain": "Ganar músculo",
   mobility: "Movilidad",
   "general-fitness": "Estado físico general",
+};
+
+const formatLabels: Record<WorkoutBlock["format"], string> = {
+  sets: "Series",
+  rounds: "Rondas",
+  amrap: "AMRAP",
+  intervals: "Intervalos",
+  emom: "EMOM",
+  "for-time": "Por tiempo",
 };
 
 export function TrainingModeSelector({
@@ -104,6 +114,7 @@ export function WorkoutBuilder({
     "strength",
     "hiit",
   ]);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const blocks = useMemo(() => {
     const warmup = routineBlocks(sources[0]?.routine ?? choices[0]!.routine)[0];
     if (!warmup) return [];
@@ -162,14 +173,74 @@ export function WorkoutBuilder({
                 {index === 0 ? "WARM UP" : `BLOQUE ${index}`}
               </Text>
               <Text style={s.blockTitle}>{block.title}</Text>
+              <Text style={s.blockMeta}>
+                {block.durationMinutes} min · {formatLabels[block.format]}
+              </Text>
             </View>
           </View>
-          {block.items.map((item) => (
-            <Text key={item.exercise.id} style={s.exercise}>
-              • {item.exercise.name} · {item.sets} × {item.reps}
-              {item.unit === "seconds" ? " s" : " rep."}
-            </Text>
-          ))}
+          {block.items.map((item) => {
+            const open = previewId === item.exercise.id;
+            return (
+              <View key={item.exercise.id} style={s.exerciseWrap}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
+                  onPress={() => setPreviewId(open ? null : item.exercise.id)}
+                  style={s.exerciseRow}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.exerciseName}>{item.exercise.name}</Text>
+                    <Text style={s.exerciseDose}>
+                      {item.sets} series × {item.reps}
+                      {item.unit === "seconds" ? " s" : " rep."}
+                      {item.perSide ? " por lado" : ""}
+                    </Text>
+                  </View>
+                  <Text style={s.previewAction}>
+                    {open ? "Cerrar ⌃" : "Ver movimiento ⌄"}
+                  </Text>
+                </Pressable>
+                {open && (
+                  <View style={s.exercisePreview}>
+                    <View style={s.diagram}>
+                      <ExerciseDiagram kind={item.exercise.illustration} />
+                    </View>
+                    <View style={s.previewCopy}>
+                      <Text style={s.previewMeta}>{item.exercise.muscles}</Text>
+                      <Text style={s.previewMeta}>
+                        {item.exercise.equipment}
+                      </Text>
+                      {item.exercise.steps
+                        .slice(0, 2)
+                        .map((step, stepIndex) => (
+                          <Text
+                            key={`${item.exercise.id}-${stepIndex}`}
+                            style={s.previewStep}
+                          >
+                            {stepIndex + 1}. {step}
+                          </Text>
+                        ))}
+                      {(item.exercise.videoId || item.exercise.videoUrl) && (
+                        <Pressable
+                          onPress={() =>
+                            void Linking.openURL(
+                              item.exercise.videoId
+                                ? `https://www.youtube.com/watch?v=${item.exercise.videoId}`
+                                : item.exercise.videoUrl!,
+                            )
+                          }
+                        >
+                          <Text style={s.videoLink}>
+                            Ver demostración en video ↗
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
           {index > 0 && (
             <View style={s.sourceRow}>
               {sources.map((choice) => (
@@ -304,7 +375,50 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   blockTitle: { color: "#173e34", fontSize: 19, fontWeight: "900" },
-  exercise: { color: "#536a60", fontSize: 14, lineHeight: 20 },
+  blockMeta: {
+    color: "#829188",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 3,
+  },
+  exerciseWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#dfe6dd",
+  },
+  exerciseRow: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 9,
+  },
+  exerciseName: { color: "#173e34", fontSize: 15, fontWeight: "800" },
+  exerciseDose: { color: "#6c7f75", fontSize: 13, marginTop: 2 },
+  previewAction: { color: "#173e34", fontSize: 11, fontWeight: "900" },
+  exercisePreview: {
+    backgroundColor: "#f2f5ef",
+    borderRadius: 18,
+    padding: 12,
+    gap: 12,
+    marginBottom: 8,
+  },
+  diagram: {
+    minHeight: 150,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewCopy: { gap: 5 },
+  previewMeta: { color: "#65786e", fontSize: 11, fontWeight: "800" },
+  previewStep: { color: "#425b50", fontSize: 12, lineHeight: 17 },
+  videoLink: {
+    color: "#173e34",
+    fontSize: 12,
+    fontWeight: "900",
+    marginTop: 3,
+  },
   sourceRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
   sourceChip: {
     backgroundColor: "#edf1e9",
