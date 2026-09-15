@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   ImageBackground,
+  Linking,
   PanResponder,
   Platform,
   Pressable,
@@ -23,8 +24,10 @@ import {
   type Prescription,
   type BlockGoal,
   type WorkoutBlock,
+  type Exercise,
 } from "@myfitnesscoach/contracts";
 import { availableReplacements, replaceRoutineExercise } from "./replacements";
+import { ExerciseDiagram } from "./ExerciseDiagram";
 
 type CardImage =
   | "padel"
@@ -74,6 +77,7 @@ export function TrainingCarousel({
   const [replacementQuery, setReplacementQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editingBlock, setEditingBlock] = useState<number | null>(null);
+  const [demoExercise, setDemoExercise] = useState<Exercise | null>(null);
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const current =
@@ -315,6 +319,7 @@ export function TrainingCarousel({
           setReplacementQuery("");
           setEditMode(false);
           setEditingBlock(null);
+          setDemoExercise(null);
         }}
         showDragIndicator
         snapPoints={["full"]}
@@ -337,7 +342,22 @@ export function TrainingCarousel({
                 },
               ]}
             >
-              {swapPrescription ? (
+              {demoExercise ? (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setDemoExercise(null)}
+                    style={s.sheetBack}
+                  >
+                    <Text style={s.sheetBackText}>← Volver a la sesión</Text>
+                  </Pressable>
+                  <Text style={s.sheetKicker}>DEMOSTRACIÓN</Text>
+                  <Text style={s.sheetTitle}>{demoExercise.name}</Text>
+                  <Text style={s.sheetMeta}>
+                    {demoExercise.muscles} · {demoExercise.equipment}
+                  </Text>
+                </>
+              ) : swapPrescription ? (
                 <>
                   <Pressable
                     accessibilityRole="button"
@@ -416,7 +436,51 @@ export function TrainingCarousel({
                 contentContainerStyle={s.sheetListContent}
                 showsVerticalScrollIndicator={false}
               >
-                {swapPrescription ? (
+                {demoExercise ? (
+                  <View style={s.demoContent}>
+                    <View style={s.demoDiagram}>
+                      <ExerciseDiagram kind={demoExercise.illustration} />
+                    </View>
+                    <View style={s.demoSection}>
+                      <Text style={s.demoSectionTitle}>CÓMO HACERLO</Text>
+                      {demoExercise.steps.map((step, index) => (
+                        <View key={`${demoExercise.id}-step-${index}`} style={s.demoStep}>
+                          <View style={s.demoStepNumber}>
+                            <Text style={s.demoStepNumberText}>{index + 1}</Text>
+                          </View>
+                          <Text style={s.demoStepText}>{step}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={s.demoCueCard}>
+                      <Text style={s.demoCueTitle}>CLAVES DE TÉCNICA</Text>
+                      {demoExercise.cues.map((cue) => (
+                        <Text key={cue} style={s.demoCueText}>• {cue}</Text>
+                      ))}
+                    </View>
+                    {(demoExercise.videoId || demoExercise.videoUrl) && (
+                      <Pressable
+                        accessibilityRole="link"
+                        onPress={() =>
+                          void Linking.openURL(
+                            demoExercise.videoId
+                              ? `https://www.youtube.com/watch?v=${demoExercise.videoId}`
+                              : demoExercise.videoUrl!,
+                          )
+                        }
+                        style={s.demoVideoButton}
+                      >
+                        <SymbolView
+                          name="play.fill"
+                          size={15}
+                          tintColor="#173e34"
+                          weight="bold"
+                        />
+                        <Text style={s.demoVideoText}>Ver video demostrativo</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : swapPrescription ? (
                   <>
                     <View style={s.catalogSearch}>
                       <SymbolView
@@ -586,14 +650,30 @@ export function TrainingCarousel({
                           key={`${item.exercise.id}-${itemIndex}`}
                           style={s.sheetExercise}
                         >
-                          <View style={s.exerciseCopy}>
-                            <Text style={s.sheetExerciseName}>
-                              {item.exercise.name}
-                            </Text>
-                            <Text style={s.sheetPrescription}>
-                              {prescriptionLabel(item, block.format)}
-                            </Text>
-                          </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Ver demostración de ${item.exercise.name}`}
+                            onPress={() => setDemoExercise(item.exercise)}
+                            style={({ pressed }) => [
+                              s.exercisePreview,
+                              pressed && s.exercisePreviewPressed,
+                            ]}
+                          >
+                            <View style={s.exerciseCopy}>
+                              <Text style={s.sheetExerciseName}>
+                                {item.exercise.name}
+                              </Text>
+                              <Text style={s.sheetPrescription}>
+                                {prescriptionLabel(item, block.format)}
+                              </Text>
+                            </View>
+                            <SymbolView
+                              name="play.circle.fill"
+                              size={23}
+                              tintColor="#688076"
+                              weight="medium"
+                            />
+                          </Pressable>
                           {editingBlock === blockIndex && (
                             <Pressable
                               accessibilityRole="button"
@@ -620,7 +700,7 @@ export function TrainingCarousel({
                   ))
                 )}
               </ScrollView>
-              {!swapPrescription && (
+              {!swapPrescription && !demoExercise && (
                 <SlideToStart
                   onComplete={() => {
                     const routine = preview.routine;
@@ -1090,10 +1170,23 @@ const s = StyleSheet.create({
   },
   sheetExercise: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
+  exercisePreview: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#eef2e9",
+  },
+  exercisePreviewPressed: { backgroundColor: "#dfe8d8" },
   exerciseCopy: { flex: 1, gap: 2 },
   sheetExerciseName: { color: "#284a40", fontSize: 14, fontWeight: "700" },
   sheetPrescription: { color: "#708277", fontSize: 11 },
@@ -1105,6 +1198,60 @@ const s = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#e4eadf",
   },
+  demoContent: { gap: 14, paddingBottom: 18 },
+  demoDiagram: {
+    overflow: "hidden",
+    borderRadius: 18,
+    padding: 10,
+    backgroundColor: "#f8f9f4",
+  },
+  demoSection: {
+    borderRadius: 18,
+    padding: 15,
+    gap: 11,
+    backgroundColor: "#f8f9f4",
+  },
+  demoSectionTitle: {
+    color: "#173e34",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  demoStep: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  demoStepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c8ff63",
+  },
+  demoStepNumberText: { color: "#173e34", fontSize: 10, fontWeight: "900" },
+  demoStepText: { flex: 1, color: "#36584e", fontSize: 12, lineHeight: 18 },
+  demoCueCard: {
+    borderRadius: 18,
+    padding: 15,
+    gap: 7,
+    backgroundColor: "#26332e",
+  },
+  demoCueTitle: {
+    color: "#c8ff63",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  demoCueText: { color: "white", fontSize: 12, lineHeight: 18 },
+  demoVideoButton: {
+    minHeight: 52,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#c8ff63",
+  },
+  demoVideoText: { color: "#173e34", fontSize: 13, fontWeight: "900" },
   sheetBack: { alignSelf: "flex-start", paddingVertical: 5 },
   sheetBackText: { color: "#c8ff63", fontSize: 13, fontWeight: "800" },
   sheetKicker: {
