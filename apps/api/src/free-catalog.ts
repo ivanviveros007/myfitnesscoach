@@ -19,7 +19,40 @@ export const freeExercises = JSON.parse(
 ) as FreeExercise[];
 
 const normalize = (value: string) =>
-  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\b(kb|ddb|sdb|db)\b/g, "dumbbell")
+    .replace(/\bmb\b/g, "medicine ball");
+
+const freeByName = new Map(
+  freeExercises.map((item) => [normalize(item.name), item]),
+);
+
+const curatedAliases: Record<string, string> = {
+  "barbell front squat": "Front Barbell Squat",
+  "barbell bent over row": "Bent Over Barbell Row",
+  "barbell back squat": "Barbell Squat",
+  "strict chin up": "Chin-Up",
+  "barbell good morning": "Good Morning",
+  "dumbbell front squat": "Dumbbell Squat",
+  "dumbbell front raise": "Front Dumbbell Raise",
+  "barbell romanian deadlift": "Romanian Deadlift",
+  "cable triceps pushdown": "Triceps Pushdown",
+};
+
+export function freeImagesForName(name: string) {
+  const normalized = normalize(name);
+  const alias = curatedAliases[normalized];
+  const item = freeByName.get(normalize(alias ?? name));
+  if (!item) return undefined;
+  return item.imagePaths.map(
+    (_, frame) => `/catalog/media/${encodeURIComponent(item.externalId)}/${frame}`,
+  );
+}
 
 const illustration = (item: FreeExercise): Exercise["illustration"] => {
   const text = normalize(`${item.name} ${item.category} ${item.muscles.join(" ")}`);

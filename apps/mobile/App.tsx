@@ -1455,7 +1455,9 @@ function Main() {
                 </Text>
                 <ExerciseVisual exercise={detail} />
                 <Text style={styles.muted}>
-                  Ilustración esquemática · inicio y movimiento
+                  {detail.imageUrls?.length
+                    ? "Demostración fotográfica · inicio y movimiento"
+                    : "Guía técnica · inicio y movimiento"}
                 </Text>
                 {detail.steps.map((step, i) => (
                   <View style={styles.preview} key={i}>

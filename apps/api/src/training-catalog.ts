@@ -4,6 +4,7 @@ import {
   type ExerciseTechnique,
   type TrainingProfile,
 } from "@myfitnesscoach/contracts";
+import { freeImagesForName } from "./free-catalog.js";
 
 const illustrationByPattern: Record<string, Exercise["illustration"]> = {
   squat: "squat",
@@ -54,6 +55,8 @@ export function appExercise(sheet: ExerciseTechnique): Exercise {
     illustration,
     steps: [...sheet.setup, ...sheet.execution].slice(0, 10),
     cues: [...sheet.cues, ...sheet.stopConditions].slice(0, 8),
+    imageUrls: freeImagesForName(sheet.exercise.name.en),
+    catalogSource: "curated",
     sourceUrl:
       sheet.provenance.sourceUrl ??
       "https://github.com/ivanviveros007/myfitnesscoach/blob/main/docs/exercise-api.md",

@@ -56,7 +56,7 @@ export async function request(
   }
 }
 export async function dailyTraining(url: string, input: DailyTrainingRequest) {
-  return dailyTrainingResponseSchema.parse(
+  const result = dailyTrainingResponseSchema.parse(
     await request(
       url,
       "/training/daily",
@@ -64,6 +64,20 @@ export async function dailyTraining(url: string, input: DailyTrainingRequest) {
       dailyTrainingRequestSchema.parse(input),
     ),
   );
+  const base = url.replace(/\/$/, "");
+  const resolveImages = (value: unknown): void => {
+    if (!value || typeof value !== "object") return;
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.imageUrls))
+      record.imageUrls = record.imageUrls.map((image) =>
+        typeof image === "string" && !image.startsWith("http")
+          ? `${base}${image}`
+          : image,
+      );
+    Object.values(record).forEach(resolveImages);
+  };
+  resolveImages(result);
+  return result;
 }
 export async function searchCatalog(url: string, query: string) {
   const result = await request(
