@@ -49,11 +49,18 @@ export const profileSchema = z.object({
   classicDaysPerWeek: z.number().int().min(2).max(5).optional(),
 });
 export type TrainingProfile = z.infer<typeof profileSchema>;
+export const recentTrainingSessionSchema = z.object({
+  finishedAt: z.iso.datetime(),
+  exerciseIds: z.array(z.string().min(1).max(80)).min(1).max(30),
+});
 export const dailyTrainingRequestSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   orientation: orientationSchema,
   completedCount: z.number().int().nonnegative(),
   profile: profileSchema,
+  recentSessions: z.array(recentTrainingSessionSchema).max(14).optional(),
+  upcomingSportInDays: z.number().int().min(0).max(7).optional(),
+  readiness: z.enum(["normal", "tired"]).optional(),
 });
 export type DailyTrainingRequest = z.infer<typeof dailyTrainingRequestSchema>;
 export const dailyTrainingChoiceSchema = z.object({

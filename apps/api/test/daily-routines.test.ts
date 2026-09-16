@@ -99,6 +99,32 @@ test("the recommended routine follows the user's declared goal", () => {
   );
 });
 
+test("main blocks have useful density and recent work changes the recommendation", () => {
+  const first = makeDailyRoutines({
+    orientation: "padel",
+    date: "2026-09-14",
+    completedCount: 0,
+    profile: { ...profile, goals: ["sport-performance", "power"] },
+  })[0]!;
+  assert.ok(first.routine.blocks![0]!.items.length >= 3);
+  assert.ok(first.routine.blocks!.slice(1, 4).every((block) => block.items.length >= 3));
+  const priorIds = first.routine.items.map((item) => item.exercise.id);
+  const next = makeDailyRoutines({
+    orientation: "padel",
+    date: "2026-09-15",
+    completedCount: 1,
+    profile: { ...profile, goals: ["sport-performance", "power"] },
+    recentSessions: [{
+      finishedAt: "2026-09-14T18:00:00.000Z",
+      exerciseIds: priorIds,
+    }],
+    upcomingSportInDays: 1,
+  })[0]!;
+  const overlap = next.routine.items.filter((item) => priorIds.includes(item.exercise.id));
+  assert.ok(overlap.length < next.routine.items.length / 2);
+  assert.match(next.insight ?? "", /24 horas/);
+});
+
 test("validated AI selections replace exercises only from the allowed block pool", () => {
   const input = {
     date: "2026-09-14",

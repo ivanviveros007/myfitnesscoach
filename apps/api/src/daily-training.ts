@@ -51,7 +51,7 @@ const warmup: BlockSpec = {
   goal: "warmup",
   catalogGoals: ["warmup"],
   dose: "warmup",
-  count: 2,
+  count: 3,
 };
 const mobility: BlockSpec = {
   title: "Mobility & Recovery",
@@ -65,14 +65,14 @@ const stability: BlockSpec = {
   goal: "stability",
   catalogGoals: ["stability", "midline"],
   dose: "core-control",
-  count: 2,
+  count: 3,
 };
 const b = (
   title: string,
   goal: BlockGoal,
   catalogGoals: string[],
   dose: DoseProfile,
-  count = 2,
+  count = 3,
   extra: Partial<BlockSpec> = {},
 ): BlockSpec => ({ title, goal, catalogGoals, dose, count, ...extra });
 
@@ -82,9 +82,10 @@ const modalityBlocks: Record<string, BlockSpec[]> = {
       "Coordinación y transferencia",
       "transfer",
       ["transfer", "sport"],
-      "warmup",
+      "core-control",
+      3,
     ),
-    b("Fuerza principal", "strength", ["strength", "full-body"], "strength", 3),
+    b("Fuerza principal", "strength", ["strength", "full-body"], "strength", 4),
     stability,
     mobility,
   ],
@@ -202,18 +203,19 @@ const modalityBlocks: Record<string, BlockSpec[]> = {
       "Coordinación y transferencia",
       "transfer",
       ["sport", "transfer", "padel"],
-      "warmup",
+      "core-control",
+      3,
     ),
-    b("Potencia multidireccional", "power", ["sport", "power"], "power", 2, {
+    b("Potencia multidireccional", "power", ["sport", "power"], "power", 3, {
       format: "intervals",
     }),
-    b("Fuerza unilateral", "strength", ["sport", "strength"], "strength", 2, {
+    b("Fuerza unilateral", "strength", ["sport", "strength"], "strength", 3, {
       patterns: ["single-leg", "lunge", "hinge"],
     }),
     stability,
   ],
   cross: [
-    b("Strength", "strength", ["cross-training", "strength"], "strength"),
+    b("Strength", "strength", ["cross-training", "strength"], "strength", 3),
     b("Power", "power", ["cross-training", "power"], "power", 2, {
       format: "intervals",
     }),
@@ -222,7 +224,7 @@ const modalityBlocks: Record<string, BlockSpec[]> = {
       "conditioning",
       ["cross-training", "conditioning"],
       "conditioning",
-      3,
+      4,
       { format: "amrap" },
     ),
     mobility,
@@ -299,6 +301,8 @@ function selectExercises(
   spec: BlockSpec,
   seed: number,
   used: Set<string>,
+  recentIds: Set<string> = new Set(),
+  recentRegions: Set<string> = new Set(),
 ) {
   const score = (sheet: ExerciseTechnique) =>
     sheet.exercise.goals.filter((item) => spec.catalogGoals.includes(item))
@@ -310,7 +314,9 @@ function selectExercises(
     (spec.regions?.some((item) => sheet.exercise.regions.includes(item))
       ? 4
       : 0) +
-    (sheet.prescriptions.some((item) => item.profile === spec.dose) ? 3 : 0);
+    (sheet.prescriptions.some((item) => item.profile === spec.dose) ? 3 : 0) -
+    (recentIds.has(sheet.exercise.id) ? 12 : 0) -
+    sheet.exercise.regions.filter((region) => recentRegions.has(region)).length * 2;
   const ranked = pool
     .filter(
       (sheet) =>
@@ -422,6 +428,16 @@ export function makeDailyRoutines(
   const { date: dateKey, completedCount, profile, orientation } = input;
   const base = template(orientation);
   const pool = classifiedPool(profile);
+  const recentSessions = (input.recentSessions ?? []).filter((session) => {
+    const elapsed = new Date(`${dateKey}T23:59:59`).getTime() - new Date(session.finishedAt).getTime();
+    return elapsed >= 0 && elapsed <= 72 * 60 * 60 * 1000;
+  });
+  const recentIds = new Set(recentSessions.flatMap((session) => session.exerciseIds));
+  const recentRegions = new Set(
+    pool
+      .filter((sheet) => recentIds.has(sheet.exercise.id))
+      .flatMap((sheet) => sheet.exercise.regions),
+  );
   return dailyStyles.map(([key, name, tag, goal], styleIndex) => {
     const used = new Set<string>();
     const seed = hash(
@@ -439,6 +455,8 @@ export function makeDailyRoutines(
         spec,
         seed + position * 19 + styleIndex,
         used,
+        recentIds,
+        recentRegions,
       );
       if (!selected.length)
         selected = selectExercises(
@@ -446,6 +464,8 @@ export function makeDailyRoutines(
           { ...spec, patterns: undefined, regions: undefined },
           seed + position,
           used,
+          recentIds,
+          recentRegions,
         );
       if (!selected.length)
         selected = pool
@@ -501,6 +521,14 @@ export function makeDailyRoutines(
       ),
     });
     const purpose = profile.goalNote?.trim() || profile.goals?.join(", ");
+    const recoveryContext =
+      input.upcomingSportInDays !== undefined && input.upcomingSportInDays <= 1
+        ? " La carga se moderó porque tenés actividad deportiva dentro de las próximas 24 horas."
+        : input.readiness === "tired"
+          ? " La carga se moderó porque marcaste cansancio."
+          : recentIds.size
+            ? " Se evitaron los movimientos y regiones más cargados durante las últimas 72 horas."
+            : "";
     const fallbackInsight =
       key === "recommended"
         ? `Combina ${blocks
@@ -518,7 +546,7 @@ export function makeDailyRoutines(
       name,
       tag,
       goal,
-      insight: (insights[key] ?? fallbackInsight).slice(0, 280),
+      insight: `${insights[key] ?? fallbackInsight}${recoveryContext}`.slice(0, 280),
       routine,
     };
   });

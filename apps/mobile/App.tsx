@@ -209,6 +209,20 @@ function Main() {
       }
     : null;
   const dateKey = new Date().toLocaleDateString("en-CA");
+  const recentSessions = finishedForSport
+    .slice(0, 14)
+    .map(({ session: completed }) => ({
+      finishedAt: completed.finishedAt!,
+      exerciseIds: completed.items.map((item) => item.exerciseId),
+    }));
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const upcomingSportInDays = effectivePlan?.input.sportDays.length
+    ? Math.min(
+        ...effectivePlan.input.sportDays.map(
+          (sportDay) => (sportDay - todayIndex + 7) % 7,
+        ),
+      )
+    : undefined;
   const profileFingerprint = profile ? JSON.stringify(profile) : "";
   const cachedDailyTraining =
     ready && profile
@@ -222,6 +236,9 @@ function Main() {
       dateKey,
       orientation,
       finishedForSport.length,
+      recentSessions.map((item) => `${item.finishedAt}:${item.exerciseIds.join(",")}`).join("|"),
+      upcomingSportInDays,
+      effectivePlan?.input.readiness,
       profileFingerprint,
     ],
     queryFn: async () => {
@@ -230,6 +247,9 @@ function Main() {
         orientation,
         completedCount: finishedForSport.length,
         profile: profile!,
+        recentSessions,
+        upcomingSportInDays,
+        readiness: effectivePlan?.input.readiness,
       });
       storage.cacheDailyTraining(owner, response);
       return response;
