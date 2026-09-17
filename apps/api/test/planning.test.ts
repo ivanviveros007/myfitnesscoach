@@ -8,9 +8,23 @@ import {
   template,
   amrapTemplate,
   sessionSchema,
+  physicalActivitySchema,
   type TrainingProfile,
   type WeekInput,
 } from "@myfitnesscoach/contracts";
+
+test("physical activities preserve sport load without becoming workouts", () => {
+  const activity = physicalActivitySchema.parse({
+    id: "87952b9e-b53e-4c51-8b5d-90a60d75b810",
+    type: "padel",
+    name: "Partido de pádel",
+    occurredAt: "2026-09-17T18:00:00.000Z",
+    durationMinutes: 90,
+    intensity: "high",
+  });
+  assert.equal(activity.durationMinutes, 90);
+  assert.equal(activity.type, "padel");
+});
 const profile: TrainingProfile = {
   experience: "regular",
   equipment: "gym",

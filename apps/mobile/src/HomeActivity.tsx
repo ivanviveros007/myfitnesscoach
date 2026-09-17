@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import type { Session } from "@myfitnesscoach/contracts";
+import type { PhysicalActivity, Session } from "@myfitnesscoach/contracts";
 
 const dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -68,20 +68,24 @@ function weekStart(date = new Date()) {
   return start;
 }
 
-function completedDays(sessions: Session[]) {
-  return new Set(
-    sessions
+function completedDays(sessions: Session[], activities: PhysicalActivity[]) {
+  return new Set([
+    ...activities.map((activity) => localKey(new Date(activity.occurredAt))),
+    ...sessions
       .filter((session) => session.finishedAt && !session.cancelledAt)
       .map((session) => localKey(new Date(session.finishedAt!))),
-  );
+  ]);
 }
 
-function weeklyStreak(sessions: Session[]) {
-  const activeWeeks = new Set(
-    sessions
+function weeklyStreak(sessions: Session[], activities: PhysicalActivity[]) {
+  const activeWeeks = new Set([
+    ...sessions
       .filter((session) => session.finishedAt && !session.cancelledAt)
       .map((session) => localKey(weekStart(new Date(session.finishedAt!)))),
-  );
+    ...activities.map((activity) =>
+      localKey(weekStart(new Date(activity.occurredAt))),
+    ),
+  ]);
   let cursor = weekStart();
   if (!activeWeeks.has(localKey(cursor))) cursor.setDate(cursor.getDate() - 7);
   let streak = 0;
@@ -92,10 +96,16 @@ function weeklyStreak(sessions: Session[]) {
   return streak;
 }
 
-export function CurrentWeek({ sessions }: { sessions: Session[] }) {
+export function CurrentWeek({
+  sessions,
+  activities = [],
+}: {
+  sessions: Session[];
+  activities?: PhysicalActivity[];
+}) {
   const today = new Date();
   const start = weekStart(today);
-  const activeDays = completedDays(sessions);
+  const activeDays = completedDays(sessions, activities);
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
@@ -135,12 +145,16 @@ export function CurrentWeek({ sessions }: { sessions: Session[] }) {
 
 export function ActivityTracker({
   sessions,
+  activities = [],
+  onAddActivity,
   onOptions,
 }: {
   sessions: Session[];
+  activities?: PhysicalActivity[];
+  onAddActivity: () => void;
   onOptions: () => void;
 }) {
-  const activeDays = completedDays(sessions);
+  const activeDays = completedDays(sessions, activities);
   const start = weekStart();
   const thisWeek = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(start);
@@ -148,7 +162,7 @@ export function ActivityTracker({
     return activeDays.has(localKey(date));
   });
   const count = thisWeek.filter(Boolean).length;
-  const streak = weeklyStreak(sessions);
+  const streak = weeklyStreak(sessions, activities);
   return (
     <View style={s.tracker}>
       <View style={s.trackerTop}>
@@ -179,9 +193,13 @@ export function ActivityTracker({
         ))}
       </View>
       <View style={s.trackerFooter}>
-        <Text style={s.footerCopy}>
-          Cada entrenamiento cuenta, sin límites semanales.
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAddActivity}
+          style={s.addActivity}
+        >
+          <Text style={s.addActivityText}>＋ Registrar actividad</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={onOptions}
@@ -226,11 +244,19 @@ const s = StyleSheet.create({
     backgroundColor: "#263f37",
   },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#c8ff63" },
-  liveText: { color: "#c8ff63", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  liveText: {
+    color: "#c8ff63",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
   activeClock: { color: "white", fontSize: 22, fontWeight: "900" },
   activeTitle: {
     color: "white",
-    fontFamily: Platform.select({ ios: "Avenir Next Condensed", android: "sans-serif-condensed" }),
+    fontFamily: Platform.select({
+      ios: "Avenir Next Condensed",
+      android: "sans-serif-condensed",
+    }),
     fontSize: 25,
     lineHeight: 29,
     fontWeight: "900",
@@ -323,7 +349,16 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  footerCopy: { flex: 1, fontSize: 12, lineHeight: 17, color: "#69786f" },
+  addActivity: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    backgroundColor: "#173e34",
+    paddingHorizontal: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addActivityText: { fontSize: 12, fontWeight: "900", color: "#c8ff63" },
   options: {
     minHeight: 44,
     borderRadius: 14,

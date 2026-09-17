@@ -316,7 +316,9 @@ function selectExercises(
       : 0) +
     (sheet.prescriptions.some((item) => item.profile === spec.dose) ? 3 : 0) -
     (recentIds.has(sheet.exercise.id) ? 12 : 0) -
-    sheet.exercise.regions.filter((region) => recentRegions.has(region)).length * 2;
+    sheet.exercise.regions.filter((region) => recentRegions.has(region))
+      .length *
+      2;
   const ranked = pool
     .filter(
       (sheet) =>
@@ -439,15 +441,50 @@ export function makeDailyRoutines(
   const base = template(orientation);
   const pool = classifiedPool(profile);
   const recentSessions = (input.recentSessions ?? []).filter((session) => {
-    const elapsed = new Date(`${dateKey}T23:59:59`).getTime() - new Date(session.finishedAt).getTime();
+    const elapsed =
+      new Date(`${dateKey}T23:59:59`).getTime() -
+      new Date(session.finishedAt).getTime();
     return elapsed >= 0 && elapsed <= 72 * 60 * 60 * 1000;
   });
-  const recentIds = new Set(recentSessions.flatMap((session) => session.exerciseIds));
+  const recentIds = new Set(
+    recentSessions.flatMap((session) => session.exerciseIds),
+  );
+  const recentActivities = (input.recentActivities ?? []).filter((activity) => {
+    const elapsed =
+      new Date(`${dateKey}T23:59:59`).getTime() -
+      new Date(activity.occurredAt).getTime();
+    return elapsed >= 0 && elapsed <= 36 * 60 * 60 * 1000;
+  });
   const recentRegions = new Set(
     pool
       .filter((sheet) => recentIds.has(sheet.exercise.id))
       .flatMap((sheet) => sheet.exercise.regions),
   );
+  const activityRegions: Partial<
+    Record<(typeof recentActivities)[number]["type"], string[]>
+  > = {
+    padel: [
+      "legs",
+      "quads",
+      "hamstrings",
+      "glutes",
+      "calves",
+      "hips",
+      "core",
+      "shoulders",
+    ],
+    football: ["legs", "quads", "hamstrings", "glutes", "calves", "hips"],
+    tennis: ["legs", "calves", "hips", "core", "shoulders"],
+    running: ["legs", "quads", "hamstrings", "glutes", "calves"],
+    cycling: ["legs", "quads", "glutes", "calves"],
+    swimming: ["shoulders", "back", "chest", "core"],
+    walking: ["legs", "calves"],
+  };
+  for (const activity of recentActivities) {
+    if (activity.intensity === "low") continue;
+    for (const region of activityRegions[activity.type] ?? [])
+      recentRegions.add(region);
+  }
   return dailyStyles.map(([key, name, tag, goal], styleIndex) => {
     const used = new Set<string>();
     const seed = hash(
@@ -528,8 +565,12 @@ export function makeDailyRoutines(
       ),
     });
     const purpose = profile.goalNote?.trim() || profile.goals?.join(", ");
-    const recoveryContext =
-      input.upcomingSportInDays !== undefined && input.upcomingSportInDays <= 1
+    const recoveryContext = recentActivities.some(
+      (activity) => activity.intensity === "high",
+    )
+      ? " La carga considera la actividad intensa que registraste recientemente."
+      : input.upcomingSportInDays !== undefined &&
+          input.upcomingSportInDays <= 1
         ? " La carga se moderó porque tenés actividad deportiva dentro de las próximas 24 horas."
         : input.readiness === "tired"
           ? " La carga se moderó porque marcaste cansancio."
@@ -553,7 +594,10 @@ export function makeDailyRoutines(
       name,
       tag,
       goal,
-      insight: `${insights[key] ?? fallbackInsight}${recoveryContext}`.slice(0, 280),
+      insight: `${insights[key] ?? fallbackInsight}${recoveryContext}`.slice(
+        0,
+        280,
+      ),
       routine,
     };
   });

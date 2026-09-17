@@ -113,22 +113,46 @@ test("main blocks have useful density and recent work changes the recommendation
     profile: { ...profile, goals: ["sport-performance", "power"] },
   })[0]!;
   assert.ok(first.routine.blocks![0]!.items.length >= 3);
-  assert.ok(first.routine.blocks!.slice(1, 4).every((block) => block.items.length >= 3));
+  assert.ok(
+    first.routine.blocks!.slice(1, 4).every((block) => block.items.length >= 3),
+  );
   const priorIds = first.routine.items.map((item) => item.exercise.id);
   const next = makeDailyRoutines({
     orientation: "padel",
     date: "2026-09-15",
     completedCount: 1,
     profile: { ...profile, goals: ["sport-performance", "power"] },
-    recentSessions: [{
-      finishedAt: "2026-09-14T18:00:00.000Z",
-      exerciseIds: priorIds,
-    }],
+    recentSessions: [
+      {
+        finishedAt: "2026-09-14T18:00:00.000Z",
+        exerciseIds: priorIds,
+      },
+    ],
     upcomingSportInDays: 1,
   })[0]!;
-  const overlap = next.routine.items.filter((item) => priorIds.includes(item.exercise.id));
+  const overlap = next.routine.items.filter((item) =>
+    priorIds.includes(item.exercise.id),
+  );
   assert.ok(overlap.length < next.routine.items.length / 2);
   assert.match(next.insight ?? "", /24 horas/);
+});
+
+test("a recently logged sport activity is considered in the next proposal", () => {
+  const choice = makeDailyRoutines({
+    orientation: "padel",
+    date: "2026-09-17",
+    completedCount: 0,
+    profile: { ...profile, goals: ["sport-performance"] },
+    recentActivities: [
+      {
+        type: "padel",
+        occurredAt: "2026-09-17T14:00:00.000Z",
+        durationMinutes: 90,
+        intensity: "high",
+      },
+    ],
+  })[0]!;
+  assert.match(choice.insight ?? "", /actividad intensa/);
 });
 
 test("validated AI selections replace exercises only from the allowed block pool", () => {
@@ -171,7 +195,9 @@ test("every supported equipment profile receives only fully illustrated exercise
       },
     });
     for (const choice of choices) {
-      assert.ok(choice.routine.blocks?.every((block) => block.items.length > 0));
+      assert.ok(
+        choice.routine.blocks?.every((block) => block.items.length > 0),
+      );
       assert.ok(
         choice.routine.items.every(
           (item) => (item.exercise.imageUrls?.length ?? 0) >= 2,

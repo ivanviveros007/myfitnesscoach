@@ -6,7 +6,9 @@ import {
   type Session,
   type CloudDataRecord,
   dailyTrainingResponseSchema,
+  physicalActivitySchema,
   type DailyTrainingResponse,
+  type PhysicalActivity,
 } from "@myfitnesscoach/contracts";
 const db = SQLite.openDatabaseSync("myfitnesscoach.db");
 db.execSync(`PRAGMA journal_mode=WAL;
@@ -121,14 +123,21 @@ export function claimGuest(owner: string) {
     );
     db.runSync("DELETE FROM favorites WHERE owner='guest'");
     for (const row of db.getAllSync<{ key: string; value: string }>(
-      "SELECT key,value FROM settings WHERE owner=? AND (key='profile' OR key LIKE 'plan:%') AND key NOT LIKE '%:revision:%'",
+      "SELECT key,value FROM settings WHERE owner=? AND (key='profile' OR key='activities' OR key LIKE 'plan:%') AND key NOT LIKE '%:revision:%'",
       owner,
-    ))
+    )) {
+      const kind =
+        row.key === "profile"
+          ? "profile"
+          : row.key === "activities"
+            ? "activities"
+            : "weekly-plan";
       queueData(owner, {
         key: row.key,
-        kind: row.key === "profile" ? "profile" : "weekly-plan",
+        kind,
         value: JSON.parse(row.value),
       } as CloudDataRecord);
+    }
     queueData(owner, {
       key: "favorites:movement",
       kind: "favorites",
@@ -223,6 +232,29 @@ export function writeSetting(owner: string, key: string, value: unknown) {
     } as CloudDataRecord);
   else if (/^plan:[a-z-]+:\d{4}-\d{2}-\d{2}$/.test(key))
     queueData(owner, { key, kind: "weekly-plan", value } as CloudDataRecord);
+  else if (key === "activities")
+    queueData(owner, {
+      key: "activities",
+      kind: "activities",
+      value,
+    } as CloudDataRecord);
+}
+
+export function activities(owner: string): PhysicalActivity[] {
+  const value = readSetting<unknown>(owner, "activities") ?? [];
+  const parsed = physicalActivitySchema.array().safeParse(value);
+  return parsed.success
+    ? parsed.data.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    : [];
+}
+
+export function saveActivity(owner: string, activity: PhysicalActivity) {
+  const valid = physicalActivitySchema.parse(activity);
+  const next = [
+    valid,
+    ...activities(owner).filter((item) => item.id !== valid.id),
+  ].slice(0, 1000);
+  writeSetting(owner, "activities", next);
 }
 
 export function readDailyTraining(

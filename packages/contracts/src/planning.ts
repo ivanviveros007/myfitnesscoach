@@ -37,6 +37,26 @@ export const fitnessGoalSchema = z.enum([
 ]);
 export type TrainingPreference = z.infer<typeof trainingPreferenceSchema>;
 export type FitnessGoal = z.infer<typeof fitnessGoalSchema>;
+export const physicalActivityTypeSchema = z.enum([
+  "padel",
+  "football",
+  "tennis",
+  "running",
+  "cycling",
+  "swimming",
+  "walking",
+  "other",
+]);
+export const physicalActivitySchema = z.object({
+  id: z.uuid(),
+  type: physicalActivityTypeSchema,
+  name: z.string().min(1).max(80),
+  occurredAt: z.iso.datetime(),
+  durationMinutes: z.number().int().min(1).max(600),
+  intensity: z.enum(["low", "moderate", "high"]),
+  notes: z.string().max(500).optional(),
+});
+export type PhysicalActivity = z.infer<typeof physicalActivitySchema>;
 export const profileSchema = z.object({
   experience: z.enum(["new", "regular"]),
   equipment: z.enum(["bodyweight", "dumbbells", "gym"]),
@@ -53,12 +73,19 @@ export const recentTrainingSessionSchema = z.object({
   finishedAt: z.iso.datetime(),
   exerciseIds: z.array(z.string().min(1).max(80)).min(1).max(30),
 });
+export const recentPhysicalActivitySchema = physicalActivitySchema.pick({
+  type: true,
+  occurredAt: true,
+  durationMinutes: true,
+  intensity: true,
+});
 export const dailyTrainingRequestSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   orientation: orientationSchema,
   completedCount: z.number().int().nonnegative(),
   profile: profileSchema,
   recentSessions: z.array(recentTrainingSessionSchema).max(14).optional(),
+  recentActivities: z.array(recentPhysicalActivitySchema).max(30).optional(),
   upcomingSportInDays: z.number().int().min(0).max(7).optional(),
   readiness: z.enum(["normal", "tired"]).optional(),
 });
@@ -114,6 +141,11 @@ export const cloudDataRecordSchema = z.discriminatedUnion("kind", [
     key: z.enum(["favorites:movement", "favorites:block"]),
     kind: z.literal("favorites"),
     value: z.array(z.string().min(1).max(80)).max(500),
+  }),
+  z.object({
+    key: z.literal("activities"),
+    kind: z.literal("activities"),
+    value: z.array(physicalActivitySchema).max(1000),
   }),
 ]);
 export const cloudDataSyncSchema = z.object({

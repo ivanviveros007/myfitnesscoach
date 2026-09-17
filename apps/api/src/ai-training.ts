@@ -5,7 +5,11 @@ import {
 } from "./daily-training.js";
 
 type GeminiSelection = {
-  routines?: { key?: string; insight?: string; blocks?: { position?: number; exerciseIds?: string[] }[] }[];
+  routines?: {
+    key?: string;
+    insight?: string;
+    blocks?: { position?: number; exerciseIds?: string[] }[];
+  }[];
 };
 
 export type DailyAiPlan = {
@@ -22,7 +26,10 @@ function parseSelections(value: GeminiSelection): DailyAiPlan {
       insights[routine.key] = routine.insight.trim().slice(0, 280);
     const blocks: Record<number, string[]> = {};
     for (const block of routine.blocks ?? []) {
-      if (!Number.isInteger(block.position) || !Array.isArray(block.exerciseIds))
+      if (
+        !Number.isInteger(block.position) ||
+        !Array.isArray(block.exerciseIds)
+      )
         continue;
       blocks[block.position!] = block.exerciseIds.filter(
         (id): id is string => typeof id === "string",
@@ -54,7 +61,7 @@ export async function selectDailyExercisesWithAi(
               role: "user",
               parts: [
                 {
-                  text: `Seleccioná los IDs para una programación diaria. Respetá la intención, patrones, regiones, propósito y cantidad de cada bloque. Priorizá variedad y evitá repetir IDs usados en las últimas 72 horas cuando existan alternativas. Moderá volumen de piernas y potencia si hay deporte dentro de 24 horas o readiness=tired. No inventes IDs. Para cada rutina escribí insight en español rioplatense explicando el propósito concreto y cualquier ajuste de recuperación; máximo 180 caracteres y sin afirmaciones médicas. Contexto: ${JSON.stringify({ experience: input.profile.experience, equipment: input.profile.equipment, jumpReady: input.profile.jumpReady, goals: input.profile.goals, goalNote: input.profile.goalNote, orientation: input.orientation, completedCount: input.completedCount, recentExerciseIds: input.recentSessions?.flatMap((session) => session.exerciseIds) ?? [], upcomingSportInDays: input.upcomingSportInDays, readiness: input.readiness })}. Opciones permitidas: ${JSON.stringify(dailySelectionCandidates(input))}`,
+                  text: `Seleccioná los IDs para una programación diaria. Respetá la intención, patrones, regiones, propósito y cantidad de cada bloque. Priorizá variedad y evitá repetir IDs usados en las últimas 72 horas cuando existan alternativas. Moderá volumen de piernas y potencia si hay deporte dentro de 24 horas, actividad física intensa reciente o readiness=tired. No inventes IDs. Para cada rutina escribí insight en español rioplatense explicando el propósito concreto y cualquier ajuste de recuperación; máximo 180 caracteres y sin afirmaciones médicas. Contexto: ${JSON.stringify({ experience: input.profile.experience, equipment: input.profile.equipment, jumpReady: input.profile.jumpReady, goals: input.profile.goals, goalNote: input.profile.goalNote, orientation: input.orientation, completedCount: input.completedCount, recentExerciseIds: input.recentSessions?.flatMap((session) => session.exerciseIds) ?? [], recentActivities: input.recentActivities ?? [], upcomingSportInDays: input.upcomingSportInDays, readiness: input.readiness })}. Opciones permitidas: ${JSON.stringify(dailySelectionCandidates(input))}`,
                 },
               ],
             },
@@ -80,7 +87,10 @@ export async function selectDailyExercisesWithAi(
                           required: ["position", "exerciseIds"],
                           properties: {
                             position: { type: "INTEGER" },
-                            exerciseIds: { type: "ARRAY", items: { type: "STRING" } },
+                            exerciseIds: {
+                              type: "ARRAY",
+                              items: { type: "STRING" },
+                            },
                           },
                         },
                       },

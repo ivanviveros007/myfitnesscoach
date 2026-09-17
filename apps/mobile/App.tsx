@@ -64,6 +64,7 @@ import {
   type Orientation,
   type Session,
   type Exercise,
+  type PhysicalActivity,
   isSessionActive,
   profileSchema,
   type TrainingPreference,
@@ -123,6 +124,16 @@ function Main() {
   const [library, setLibrary] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
   const [todayMenu, setTodayMenu] = useState(false);
+  const [activitySheet, setActivitySheet] = useState(false);
+  const [activityType, setActivityType] =
+    useState<PhysicalActivity["type"]>("padel");
+  const [activityDate, setActivityDate] = useState(
+    new Date().toLocaleDateString("en-CA"),
+  );
+  const [activityDuration, setActivityDuration] = useState("60");
+  const [activityIntensity, setActivityIntensity] =
+    useState<PhysicalActivity["intensity"]>("moderate");
+  const [activityNotes, setActivityNotes] = useState("");
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
   const [swapQuery, setSwapQuery] = useState("");
@@ -169,6 +180,7 @@ function Main() {
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
   const rows = ready ? storage.history(owner) : [];
+  const physicalActivities = ready ? storage.activities(owner) : [];
   const count = ready
     ? storage.pending(owner).length + storage.pendingData(owner).length
     : 0;
@@ -216,6 +228,12 @@ function Main() {
       finishedAt: completed.finishedAt!,
       exerciseIds: completed.items.map((item) => item.exerciseId),
     }));
+  const recentActivities = physicalActivities.slice(0, 30).map((activity) => ({
+    type: activity.type,
+    occurredAt: activity.occurredAt,
+    durationMinutes: activity.durationMinutes,
+    intensity: activity.intensity,
+  }));
   const todayIndex = (new Date().getDay() + 6) % 7;
   const upcomingSportInDays = effectivePlan?.input.sportDays.length
     ? Math.min(
@@ -237,7 +255,12 @@ function Main() {
       dateKey,
       orientation,
       finishedForSport.length,
-      recentSessions.map((item) => `${item.finishedAt}:${item.exerciseIds.join(",")}`).join("|"),
+      recentSessions
+        .map((item) => `${item.finishedAt}:${item.exerciseIds.join(",")}`)
+        .join("|"),
+      recentActivities
+        .map((item) => `${item.occurredAt}:${item.type}:${item.intensity}`)
+        .join("|"),
       upcomingSportInDays,
       effectivePlan?.input.readiness,
       profileFingerprint,
@@ -249,6 +272,7 @@ function Main() {
         completedCount: finishedForSport.length,
         profile: profile!,
         recentSessions,
+        recentActivities,
         upcomingSportInDays,
         readiness: effectivePlan?.input.readiness,
       });
@@ -264,7 +288,11 @@ function Main() {
   });
   const dailyTraining = dailyTrainingQuery.data ?? null;
   const replacementCatalogQuery = useQuery({
-    queryKey: ["active-replacement-search", url, swapQuery.trim().toLowerCase()],
+    queryKey: [
+      "active-replacement-search",
+      url,
+      swapQuery.trim().toLowerCase(),
+    ],
     queryFn: () => api.searchCatalog(url, swapQuery.trim()),
     enabled: swapIndex !== null && !!url && swapQuery.trim().length >= 2,
     staleTime: 24 * 60 * 60 * 1000,
@@ -340,6 +368,61 @@ function Main() {
     setPlanWeek(next.input.week);
     setPlanning(false);
     setTick((t) => t + 1);
+  }
+  function savePhysicalActivity() {
+    const duration = Number(activityDuration);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(activityDate)) {
+      Alert.alert("Fecha inválida", "Usá el formato AAAA-MM-DD.");
+      return;
+    }
+    if (!Number.isInteger(duration) || duration < 1 || duration > 600) {
+      Alert.alert("Duración inválida", "Ingresá entre 1 y 600 minutos.");
+      return;
+    }
+    const date = new Date(`${activityDate}T12:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      Alert.alert("Fecha inválida", "Revisá la fecha de la actividad.");
+      return;
+    }
+    const todayKey = new Date().toLocaleDateString("en-CA");
+    if (activityDate > todayKey) {
+      Alert.alert("Fecha inválida", "No podés registrar una actividad futura.");
+      return;
+    }
+    const labels: Record<PhysicalActivity["type"], string> = {
+      padel: "Partido de pádel",
+      football: "Partido de fútbol",
+      tennis: "Partido de tenis",
+      running: "Running",
+      cycling: "Ciclismo",
+      swimming: "Natación",
+      walking: "Caminata",
+      other: "Otra actividad",
+    };
+    try {
+      storage.saveActivity(owner, {
+        id: Crypto.randomUUID(),
+        type: activityType,
+        name: labels[activityType],
+        occurredAt:
+          activityDate === todayKey
+            ? new Date().toISOString()
+            : date.toISOString(),
+        durationMinutes: duration,
+        intensity: activityIntensity,
+        notes: activityNotes.trim() || undefined,
+      });
+      setActivitySheet(false);
+      setActivityNotes("");
+      setTick((value) => value + 1);
+      setNotice("Actividad física registrada");
+      void queryClient.invalidateQueries({ queryKey: ["daily-training"] });
+    } catch {
+      Alert.alert(
+        "No se pudo guardar",
+        "Intentá registrar la actividad nuevamente.",
+      );
+    }
   }
   function changeTrainingPreference(preference: TrainingPreference) {
     if (!profile) {
@@ -696,7 +779,10 @@ function Main() {
         )}
         {tab === "today" && !session && !planning && (
           <>
-            <CurrentWeek sessions={rows.map((row) => row.session)} />
+            <CurrentWeek
+              sessions={rows.map((row) => row.session)}
+              activities={physicalActivities}
+            />
             <Text style={styles.eyebrow}>TU ENTRENAMIENTO, A TU RITMO</Text>
             <Text style={styles.hero}>Hoy también{"\n"}cuenta.</Text>
             <View style={styles.wrap}>
@@ -782,6 +868,11 @@ function Main() {
             {!!trainingChoices.length && (
               <ActivityTracker
                 sessions={rows.map((row) => row.session)}
+                activities={physicalActivities}
+                onAddActivity={() => {
+                  setActivityDate(new Date().toLocaleDateString("en-CA"));
+                  setActivitySheet(true);
+                }}
                 onOptions={() => setTodayMenu(true)}
               />
             )}
@@ -1331,7 +1422,7 @@ function Main() {
         isPresented={todayMenu}
         onDismiss={() => setTodayMenu(false)}
         showDragIndicator
-        snapPoints={[{ height: 380 }]}
+        snapPoints={[{ height: 460 }]}
         containerColor="#17211d"
       >
         <View
@@ -1342,6 +1433,19 @@ function Main() {
         >
           <Text style={styles.sheetEyebrow}>SESIÓN DE HOY</Text>
           <Text style={styles.sheetTitle}>¿Querés ajustar algo?</Text>
+          <Pressable
+            style={styles.sheetAction}
+            onPress={() => {
+              setTodayMenu(false);
+              setActivityDate(new Date().toLocaleDateString("en-CA"));
+              setActivitySheet(true);
+            }}
+          >
+            <Text style={styles.sheetActionText}>
+              Registrar actividad física
+            </Text>
+            <Text style={styles.sheetArrow}>›</Text>
+          </Pressable>
           <Pressable
             style={styles.sheetAction}
             onPress={() => {
@@ -1382,6 +1486,113 @@ function Main() {
         </View>
       </BottomSheet>
       <BottomSheet
+        isPresented={activitySheet}
+        onDismiss={() => setActivitySheet(false)}
+        showDragIndicator
+        snapPoints={[{ height: 690 }]}
+        containerColor="#17211d"
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.sheetContent,
+            { width: Math.max(280, screenWidth - 32) },
+          ]}
+        >
+          <Text style={styles.sheetEyebrow}>ACTIVIDAD DEL DÍA</Text>
+          <Text style={styles.sheetTitle}>¿Qué actividad hiciste?</Text>
+          <Text style={styles.sheetBody}>
+            La tendremos en cuenta para tu constancia y para ajustar la próxima
+            sesión.
+          </Text>
+          <View style={styles.activityChoices}>
+            {(
+              [
+                ["padel", "Pádel"],
+                ["football", "Fútbol"],
+                ["tennis", "Tenis"],
+                ["running", "Running"],
+                ["cycling", "Bici"],
+                ["swimming", "Natación"],
+                ["walking", "Caminata"],
+                ["other", "Otra"],
+              ] as [PhysicalActivity["type"], string][]
+            ).map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() => setActivityType(key)}
+                style={[
+                  styles.activityChoice,
+                  activityType === key && styles.activityChoiceActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.activityChoiceText,
+                    activityType === key && styles.activityChoiceTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.activityFields}>
+            <TextInput
+              value={activityDate}
+              onChangeText={setActivityDate}
+              placeholder="AAAA-MM-DD"
+              keyboardType="numbers-and-punctuation"
+              style={[styles.input, styles.activityField]}
+            />
+            <TextInput
+              value={activityDuration}
+              onChangeText={setActivityDuration}
+              placeholder="Minutos"
+              keyboardType="number-pad"
+              style={[styles.input, styles.activityField]}
+            />
+          </View>
+          <Text style={styles.sheetEyebrow}>INTENSIDAD</Text>
+          <View style={styles.activityChoices}>
+            {(
+              [
+                ["low", "Suave"],
+                ["moderate", "Moderada"],
+                ["high", "Intensa"],
+              ] as [PhysicalActivity["intensity"], string][]
+            ).map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() => setActivityIntensity(key)}
+                style={[
+                  styles.activityChoice,
+                  activityIntensity === key && styles.activityChoiceActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.activityChoiceText,
+                    activityIntensity === key &&
+                      styles.activityChoiceTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            value={activityNotes}
+            onChangeText={setActivityNotes}
+            placeholder="Notas opcionales"
+            maxLength={500}
+            style={styles.input}
+          />
+          <Button title="Guardar actividad" onPress={savePhysicalActivity} />
+        </ScrollView>
+      </BottomSheet>
+      <BottomSheet
         isPresented={swapIndex !== null}
         onDismiss={() => {
           setSwapIndex(null);
@@ -1401,11 +1612,12 @@ function Main() {
               swapWithoutEquipment ? "bodyweight" : profile?.equipment,
               swapQuery,
             ).filter((exercise) => (exercise.imageUrls?.length ?? 0) >= 2);
-            const replacements = swapQuery.trim().length >= 2
-              ? (replacementCatalogQuery.data?.items ?? []).filter(
-                  (exercise) => (exercise.imageUrls?.length ?? 0) >= 2,
-                )
-              : localReplacements;
+            const replacements =
+              swapQuery.trim().length >= 2
+                ? (replacementCatalogQuery.data?.items ?? []).filter(
+                    (exercise) => (exercise.imageUrls?.length ?? 0) >= 2,
+                  )
+                : localReplacements;
             return (
               <View
                 style={[
@@ -1469,11 +1681,13 @@ function Main() {
                     <Text style={styles.sheetArrow}>›</Text>
                   </Pressable>
                 ))}
-                {!replacementCatalogQuery.isFetching && replacements.length === 0 && (
-                  <Text style={styles.sheetBody}>
-                    Escribí al menos dos letras. Sólo mostramos ejercicios con demostración visual completa.
-                  </Text>
-                )}
+                {!replacementCatalogQuery.isFetching &&
+                  replacements.length === 0 && (
+                    <Text style={styles.sheetBody}>
+                      Escribí al menos dos letras. Sólo mostramos ejercicios con
+                      demostración visual completa.
+                    </Text>
+                  )}
               </View>
             );
           })()}
@@ -1894,6 +2108,26 @@ const styles = StyleSheet.create({
     color: "#173e34",
   },
   sheetArrow: { fontSize: 28, color: "#527061" },
+  activityChoices: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  activityChoice: {
+    borderRadius: 99,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    backgroundColor: "white",
+  },
+  activityChoiceActive: { backgroundColor: "#c8ff63" },
+  activityChoiceText: {
+    color: "#51675c",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  activityChoiceTextActive: { color: "#173e34" },
+  activityFields: { flexDirection: "row", gap: 8 },
+  activityField: { flex: 1 },
   reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   reasonPill: {
     overflow: "hidden",
