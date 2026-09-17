@@ -9,7 +9,7 @@ import {
   type TrainingPreference,
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
-import { ExerciseDiagram } from "./ExerciseDiagram";
+import { ExerciseVisual } from "./ExerciseVisual";
 
 export const goalLabels: Record<FitnessGoal, string> = {
   speed: "Velocidad",
@@ -203,7 +203,7 @@ export function WorkoutBuilder({
                 {open && (
                   <View style={s.exercisePreview}>
                     <View style={s.diagram}>
-                      <ExerciseDiagram kind={item.exercise.illustration} />
+                      <ExerciseVisual exercise={item.exercise} />
                     </View>
                     <View style={s.previewCopy}>
                       <Text style={s.previewMeta}>{item.exercise.muscles}</Text>
