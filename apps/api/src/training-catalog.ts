@@ -4,7 +4,10 @@ import {
   type ExerciseTechnique,
   type TrainingProfile,
 } from "@myfitnesscoach/contracts";
-import { freeImagesForName } from "./free-catalog.js";
+import {
+  buildFreeExerciseTechniques,
+  freeImagesForName,
+} from "./free-catalog.js";
 
 const illustrationByPattern: Record<string, Exercise["illustration"]> = {
   squat: "squat",
@@ -78,8 +81,25 @@ export function compatibleWithProfile(
   return sheet.exercise.equipment.every((item) => allowed.has(item));
 }
 
+const visualProgrammingPool = [
+  ...exerciseTechniques.filter(
+    (sheet) => (freeImagesForName(sheet.exercise.name.en)?.length ?? 0) >= 2,
+  ),
+  ...buildFreeExerciseTechniques(),
+].filter(
+  (sheet, index, all) =>
+    all.findIndex((candidate) => candidate.exercise.id === sheet.exercise.id) === index,
+);
+
+export const visualProgrammingStats = {
+  total: visualProgrammingPool.length,
+  imported: visualProgrammingPool.filter(
+    (sheet) => sheet.exercise.origin === "free-exercise-db",
+  ).length,
+};
+
 export function classifiedPool(profile: TrainingProfile) {
-  return exerciseTechniques.filter((sheet) =>
+  return visualProgrammingPool.filter((sheet) =>
     compatibleWithProfile(sheet, profile),
   );
 }

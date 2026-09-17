@@ -30,6 +30,12 @@ test("every proposal has warm up plus four populated blocks", () => {
       new Set(choice.routine.items.map((item) => item.exercise.id)).size,
       choice.routine.items.length,
     );
+    assert.ok(
+      choice.routine.items.every(
+        (item) => (item.exercise.imageUrls?.length ?? 0) >= 2,
+      ),
+      `${choice.name} contiene un ejercicio sin demostración visual`,
+    );
   }
 });
 
@@ -150,4 +156,27 @@ test("validated AI selections replace exercises only from the allowed block pool
     choices[0]!.routine.blocks![0]!.items.map((item) => item.exercise.id),
     exerciseIds,
   );
+});
+
+test("every supported equipment profile receives only fully illustrated exercises", () => {
+  for (const equipment of ["bodyweight", "dumbbells", "gym"] as const) {
+    const choices = makeDailyRoutines({
+      orientation: "fitness",
+      date: "2026-09-16",
+      completedCount: 0,
+      profile: {
+        ...profile,
+        experience: equipment === "bodyweight" ? "new" : "regular",
+        equipment,
+      },
+    });
+    for (const choice of choices) {
+      assert.ok(choice.routine.blocks?.every((block) => block.items.length > 0));
+      assert.ok(
+        choice.routine.items.every(
+          (item) => (item.exercise.imageUrls?.length ?? 0) >= 2,
+        ),
+      );
+    }
+  }
 });

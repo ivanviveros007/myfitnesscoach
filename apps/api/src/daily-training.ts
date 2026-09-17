@@ -420,6 +420,16 @@ function prescription(sheet: ExerciseTechnique, spec: BlockSpec): Prescription {
   };
 }
 
+function blockDuration(spec: BlockSpec, position: number) {
+  if (position === 0) return 4;
+  if (spec.dose === "power") return 8;
+  if (spec.dose === "strength") return 12;
+  if (spec.dose === "hypertrophy") return 10;
+  if (spec.dose === "interval" || spec.dose === "conditioning") return 10;
+  if (spec.dose === "core-control") return 8;
+  return 7;
+}
+
 export function makeDailyRoutines(
   input: DailyTrainingRequest,
   selections: DailyExerciseSelections = {},
@@ -500,10 +510,7 @@ export function makeDailyRoutines(
         title: spec.title,
         purpose: tag,
         format: spec.format ?? "sets",
-        durationMinutes:
-          position === 0
-            ? 5
-            : Math.max(5, Math.round((base.estimatedMinutes ?? 40) / 5)),
+        durationMinutes: blockDuration(spec, position),
         items,
       };
     });

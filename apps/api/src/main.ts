@@ -35,7 +35,7 @@ import { selectDailyExercisesWithAi } from "./ai-training.js";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { appExercise } from "./training-catalog.js";
+import { appExercise, visualProgrammingStats } from "./training-catalog.js";
 import {
   freeExerciseByExternalId,
   freeExercises,
@@ -68,6 +68,7 @@ class Api {
       technicalExerciseCount: exerciseTechniques.length,
       expandedExerciseCount: freeExercises.length,
       totalCatalogCount: exerciseTechniques.length + freeExercises.length,
+      automaticProgrammingCount: visualProgrammingStats.total,
     };
   }
   @Get("catalog/search") catalogSearch(

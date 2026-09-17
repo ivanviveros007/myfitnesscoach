@@ -125,6 +125,7 @@ function Main() {
   const [todayMenu, setTodayMenu] = useState(false);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
+  const [swapQuery, setSwapQuery] = useState("");
   const [planWeek, setPlanWeek] = useState(currentWeek());
   const scrollRef = useRef<ScrollView>(null);
   function goBack() {
@@ -262,6 +263,12 @@ function Main() {
       : undefined,
   });
   const dailyTraining = dailyTrainingQuery.data ?? null;
+  const replacementCatalogQuery = useQuery({
+    queryKey: ["active-replacement-search", url, swapQuery.trim().toLowerCase()],
+    queryFn: () => api.searchCatalog(url, swapQuery.trim()),
+    enabled: swapIndex !== null && !!url && swapQuery.trim().length >= 2,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
   const experienceColors = ["#173e34", "#ef6d4f", "#397e88", "#7657a8"];
   const experienceImages = [
     "padel",
@@ -568,6 +575,7 @@ function Main() {
     setExpandedExercise(null);
     setSwapIndex(null);
     setSwapWithoutEquipment(false);
+    setSwapQuery("");
     setNotice(`Ejercicio cambiado por ${replacement.name}`);
   }
   async function authenticate(register: boolean) {
@@ -1375,7 +1383,10 @@ function Main() {
       </BottomSheet>
       <BottomSheet
         isPresented={swapIndex !== null}
-        onDismiss={() => setSwapIndex(null)}
+        onDismiss={() => {
+          setSwapIndex(null);
+          setSwapQuery("");
+        }}
         showDragIndicator
         snapPoints={[{ height: 560 }]}
         containerColor="#17211d"
@@ -1384,11 +1395,17 @@ function Main() {
           swapIndex !== null &&
           (() => {
             const current = session.routine.items[swapIndex];
-            const replacements = availableReplacements(
+            const localReplacements = availableReplacements(
               current.exercise,
               current.block,
               swapWithoutEquipment ? "bodyweight" : profile?.equipment,
-            );
+              swapQuery,
+            ).filter((exercise) => (exercise.imageUrls?.length ?? 0) >= 2);
+            const replacements = swapQuery.trim().length >= 2
+              ? (replacementCatalogQuery.data?.items ?? []).filter(
+                  (exercise) => (exercise.imageUrls?.length ?? 0) >= 2,
+                )
+              : localReplacements;
             return (
               <View
                 style={[
@@ -1402,6 +1419,15 @@ function Main() {
                   Elegí una alternativa para el mismo bloque. Conservaremos las
                   series y el objetivo de la sesión.
                 </Text>
+                <TextInput
+                  value={swapQuery}
+                  onChangeText={setSwapQuery}
+                  placeholder="Buscar ejercicio, músculo o material"
+                  placeholderTextColor="#8d9992"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.input}
+                />
                 <View style={styles.reasonRow}>
                   <Pressable
                     onPress={() => setSwapWithoutEquipment((value) => !value)}
@@ -1443,6 +1469,11 @@ function Main() {
                     <Text style={styles.sheetArrow}>›</Text>
                   </Pressable>
                 ))}
+                {!replacementCatalogQuery.isFetching && replacements.length === 0 && (
+                  <Text style={styles.sheetBody}>
+                    Escribí al menos dos letras. Sólo mostramos ejercicios con demostración visual completa.
+                  </Text>
+                )}
               </View>
             );
           })()}

@@ -128,8 +128,8 @@ export function TrainingCarousel({
         new Map(
           [...localReplacements, ...(remoteCatalog.data?.items ?? [])].map((item) => [item.id, item]),
         ).values(),
-      ).slice(0, 60)
-    : localReplacements;
+      ).filter((item) => (item.imageUrls?.length ?? 0) >= 2).slice(0, 60)
+    : localReplacements.filter((item) => (item.imageUrls?.length ?? 0) >= 2);
   const replaceWholeBlock = (blockIndex: number) => {
     setPreview((currentPreview) => {
       if (!currentPreview) return currentPreview;
