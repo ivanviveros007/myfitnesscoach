@@ -168,7 +168,7 @@ export function ActivityTracker({
   return (
     <View style={s.tracker}>
       <View style={s.trackerTop}>
-        <View>
+        <View style={s.trackerHeading}>
           <Text style={s.kicker}>TU CONSTANCIA</Text>
           <Text style={s.trackerTitle}>
             {count
@@ -310,6 +310,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  trackerHeading: { flex: 1, minWidth: 0 },
   kicker: {
     fontSize: 9,
     letterSpacing: 1.2,
@@ -325,6 +326,7 @@ const s = StyleSheet.create({
     marginTop: 3,
   },
   streakBadge: {
+    flexShrink: 0,
     backgroundColor: "#edf1ea",
     borderRadius: 18,
     paddingHorizontal: 11,
