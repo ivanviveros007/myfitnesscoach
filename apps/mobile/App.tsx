@@ -31,7 +31,7 @@ import { StatusBar } from "expo-status-bar";
 import { BottomSheet } from "@expo/ui";
 import { Button } from "./src/AppButton";
 import { WeekPlanner } from "./src/WeekPlanner";
-import { TrainingCalendar } from "./src/TrainingCalendar";
+import { TrainingCalendar, TrainingCalendarCard } from "./src/TrainingCalendar";
 import { PlanOverview } from "./src/PlanOverview";
 import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
@@ -125,6 +125,7 @@ function Main() {
   const [planning, setPlanning] = useState(false);
   const [library, setLibrary] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [todayMenu, setTodayMenu] = useState(false);
   const [activitySheet, setActivitySheet] = useState(false);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(
@@ -157,6 +158,8 @@ function Main() {
       setPlanning(false);
     } else if (showPlan) {
       setShowPlan(false);
+    } else if (showCalendar) {
+      setShowCalendar(false);
     } else if (tab !== "today") {
       setTab("today");
     } else if (session && isSessionActive(session)) {
@@ -182,10 +185,10 @@ function Main() {
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", goBack);
     return () => sub.remove();
-  }, [detail, tab, session, planning, library, showPlan]);
+  }, [detail, tab, session, planning, library, showPlan, showCalendar]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [tab, session?.id, planning, showPlan]);
+  }, [tab, session?.id, planning, showPlan, showCalendar]);
   const owner = account?.userId ?? "guest";
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
@@ -395,6 +398,7 @@ function Main() {
     ]);
     setPlanWeek(next.input.week);
     setPlanning(false);
+    setShowCalendar(false);
     setShowPlan(true);
     setTick((t) => t + 1);
   }
@@ -784,7 +788,7 @@ function Main() {
           />
         </View>
       </View>
-      {(session || planning || showPlan || tab !== "today") && (
+      {(session || planning || showPlan || showCalendar || tab !== "today") && (
         <View style={styles.backBar}>
           <Pressable
             accessibilityRole="button"
@@ -814,6 +818,52 @@ function Main() {
         {tab === "today" &&
           !session &&
           !planning &&
+          showCalendar &&
+          profile && (
+            <TrainingCalendar
+              plan={effectivePlan}
+              activities={physicalActivities}
+              sessions={rows.map((row) => row.session)}
+              onAdd={(date) => {
+                setEditingActivityId(null);
+                setActivityDate(date);
+                setActivityStatus("planned");
+                setActivityType("workout");
+                setActivityDuration("60");
+                setActivityIntensity("moderate");
+                setActivityFocuses([]);
+                setActivityNotes("");
+                setActivitySheet(true);
+              }}
+              onEditPlan={() => setPlanning(true)}
+              onViewPlan={() => {
+                setShowCalendar(false);
+                setShowPlan(true);
+              }}
+              onStart={start}
+              onEditActivity={(activity) => {
+                setEditingActivityId(activity.id);
+                setActivityDate(
+                  new Date(activity.occurredAt).toLocaleDateString("en-CA"),
+                );
+                setActivityType(activity.type);
+                setActivityDuration(String(activity.durationMinutes));
+                setActivityIntensity(activity.intensity);
+                setActivityStatus(activity.status);
+                setActivityFocuses(activity.focuses);
+                setActivityNotes(activity.notes ?? "");
+                setActivitySheet(true);
+              }}
+              aiInsight={
+                dailyTraining?.choices.find(
+                  (choice) => choice.key === "recommended",
+                )?.insight
+              }
+            />
+          )}
+        {tab === "today" &&
+          !session &&
+          !planning &&
           showPlan &&
           profile &&
           effectivePlan && (
@@ -835,238 +885,212 @@ function Main() {
               }}
             />
           )}
-        {tab === "today" && !session && !planning && !showPlan && (
-          <>
-            <CurrentWeek
-              sessions={rows.map((row) => row.session)}
-              activities={physicalActivities}
-            />
-            <Text style={styles.eyebrow}>TU ENTRENAMIENTO, A TU RITMO</Text>
-            <Text style={styles.hero}>Hoy también{"\n"}cuenta.</Text>
-            <View style={styles.wrap}>
-              {(Object.keys(orientations) as Orientation[]).map((key) => (
-                <Pressable
-                  key={key}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: orientation === key }}
-                  onPress={() => {
-                    setOrientation(key);
-                    setShowPlan(false);
-                  }}
-                  style={[
-                    styles.chip,
-                    orientation === key && styles.chipActive,
-                  ]}
-                >
-                  <Text
+        {tab === "today" &&
+          !session &&
+          !planning &&
+          !showPlan &&
+          !showCalendar && (
+            <>
+              <CurrentWeek
+                sessions={rows.map((row) => row.session)}
+                activities={physicalActivities}
+              />
+              <Text style={styles.eyebrow}>TU ENTRENAMIENTO, A TU RITMO</Text>
+              <Text style={styles.hero}>Hoy también{"\n"}cuenta.</Text>
+              <View style={styles.wrap}>
+                {(Object.keys(orientations) as Orientation[]).map((key) => (
+                  <Pressable
+                    key={key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: orientation === key }}
+                    onPress={() => {
+                      setOrientation(key);
+                      setShowPlan(false);
+                    }}
                     style={[
-                      styles.chipText,
-                      orientation === key && { color: "white" },
+                      styles.chip,
+                      orientation === key && styles.chipActive,
                     ]}
                   >
-                    {orientations[key].name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            {active && (
-              <ActiveWorkoutCard
-                session={active.session}
-                onResume={() => {
-                  const resumed = resumedSession(active.session);
-                  persist(resumed);
-                }}
-              />
-            )}
-            {orientation !== "free" && profile && (
-              <TrainingCalendar
-                plan={effectivePlan}
-                activities={physicalActivities}
-                sessions={rows.map((row) => row.session)}
-                onAdd={(date) => {
-                  setEditingActivityId(null);
-                  setActivityDate(date);
-                  setActivityStatus("planned");
-                  setActivityType("workout");
-                  setActivityDuration("60");
-                  setActivityIntensity("moderate");
-                  setActivityFocuses([]);
-                  setActivityNotes("");
-                  setActivitySheet(true);
-                }}
-                onEditPlan={() => setPlanning(true)}
-                onViewPlan={() => setShowPlan(true)}
-                onStart={start}
-                onEditActivity={(activity) => {
-                  setEditingActivityId(activity.id);
-                  setActivityDate(
-                    new Date(activity.occurredAt).toLocaleDateString("en-CA"),
-                  );
-                  setActivityType(activity.type);
-                  setActivityDuration(String(activity.durationMinutes));
-                  setActivityIntensity(activity.intensity);
-                  setActivityStatus(activity.status);
-                  setActivityFocuses(activity.focuses);
-                  setActivityNotes(activity.notes ?? "");
-                  setActivitySheet(true);
-                }}
-                aiInsight={
-                  dailyTraining?.choices.find(
-                    (choice) => choice.key === "recommended",
-                  )?.insight
-                }
-              />
-            )}
-            {profile && (
-              <TrainingModeSelector
-                value={profile.trainingPreference ?? "coach"}
-                goals={profile.goals ?? []}
-                goalNote={profile.goalNote}
-                onChange={changeTrainingPreference}
-                onEditGoal={() => setPlanning(true)}
-              />
-            )}
-            {!!trainingChoices.length &&
-              (profile?.trainingPreference ?? "coach") === "coach" && (
-                <TrainingCarousel
-                  choices={trainingChoices}
-                  equipment={profile?.equipment ?? "gym"}
-                  apiUrl={url}
-                  isPersonalizing={dailyTrainingQuery.isFetching}
-                  onStart={start}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        orientation === key && { color: "white" },
+                      ]}
+                    >
+                      {orientations[key].name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {active && (
+                <ActiveWorkoutCard
+                  session={active.session}
+                  onResume={() => {
+                    const resumed = resumedSession(active.session);
+                    persist(resumed);
+                  }}
                 />
               )}
-            {!!trainingChoices.length &&
-              profile?.trainingPreference === "builder" && (
-                <WorkoutBuilder choices={trainingChoices} onStart={start} />
+              {orientation !== "free" && profile && (
+                <TrainingCalendarCard
+                  plan={effectivePlan}
+                  activities={physicalActivities}
+                  onOpen={() => setShowCalendar(true)}
+                />
               )}
-            {!!trainingChoices.length &&
-              profile?.trainingPreference === "classic" && (
-                <>
-                  <ClassicIntro days={profile.classicDaysPerWeek ?? 3} />
+              {profile && (
+                <TrainingModeSelector
+                  value={profile.trainingPreference ?? "coach"}
+                  goals={profile.goals ?? []}
+                  goalNote={profile.goalNote}
+                  onChange={changeTrainingPreference}
+                  onEditGoal={() => setPlanning(true)}
+                />
+              )}
+              {!!trainingChoices.length &&
+                (profile?.trainingPreference ?? "coach") === "coach" && (
                   <TrainingCarousel
-                    choices={trainingChoices.filter((choice) =>
-                      [
-                        "hypertrophy",
-                        "strength",
-                        "upper",
-                        "full-body",
-                      ].includes(choice.key),
-                    )}
-                    equipment={profile.equipment}
+                    choices={trainingChoices}
+                    equipment={profile?.equipment ?? "gym"}
                     apiUrl={url}
                     isPersonalizing={dailyTrainingQuery.isFetching}
-                    onStart={(routine) =>
-                      start({ ...routine, trainingMode: "classic" })
-                    }
+                    onStart={start}
                   />
-                </>
+                )}
+              {!!trainingChoices.length &&
+                profile?.trainingPreference === "builder" && (
+                  <WorkoutBuilder choices={trainingChoices} onStart={start} />
+                )}
+              {!!trainingChoices.length &&
+                profile?.trainingPreference === "classic" && (
+                  <>
+                    <ClassicIntro days={profile.classicDaysPerWeek ?? 3} />
+                    <TrainingCarousel
+                      choices={trainingChoices.filter((choice) =>
+                        [
+                          "hypertrophy",
+                          "strength",
+                          "upper",
+                          "full-body",
+                        ].includes(choice.key),
+                      )}
+                      equipment={profile.equipment}
+                      apiUrl={url}
+                      isPersonalizing={dailyTrainingQuery.isFetching}
+                      onStart={(routine) =>
+                        start({ ...routine, trainingMode: "classic" })
+                      }
+                    />
+                  </>
+                )}
+              {!!trainingChoices.length && (
+                <ActivityTracker
+                  sessions={rows.map((row) => row.session)}
+                  activities={physicalActivities}
+                  onAddActivity={() => {
+                    setEditingActivityId(null);
+                    setActivityDate(new Date().toLocaleDateString("en-CA"));
+                    setActivityStatus("completed");
+                    setActivityType("padel");
+                    setActivityFocuses([]);
+                    setActivityNotes("");
+                    setActivitySheet(true);
+                  }}
+                  onOptions={() => setTodayMenu(true)}
+                />
               )}
-            {!!trainingChoices.length && (
-              <ActivityTracker
-                sessions={rows.map((row) => row.session)}
-                activities={physicalActivities}
-                onAddActivity={() => {
-                  setEditingActivityId(null);
-                  setActivityDate(new Date().toLocaleDateString("en-CA"));
-                  setActivityStatus("completed");
-                  setActivityType("padel");
-                  setActivityFocuses([]);
-                  setActivityNotes("");
-                  setActivitySheet(true);
-                }}
-                onOptions={() => setTodayMenu(true)}
-              />
-            )}
-            {orientation !== "free" ? (
-              !profile || !effectivePlan || !todayRoutine ? (
+              {orientation !== "free" ? (
+                !profile || !effectivePlan || !todayRoutine ? (
+                  <View style={styles.card}>
+                    <Text style={styles.title}>
+                      Primero, queremos conocerte
+                    </Text>
+                    <Text style={styles.body}>
+                      Contanos tu experiencia, el material habitual y tus
+                      limitaciones. Después podés entrenar todos los días que
+                      quieras: iremos adaptando la próxima sesión.
+                    </Text>
+                    <Button
+                      title="Configurar mi entrenador"
+                      onPress={() => setPlanning(true)}
+                    />
+                  </View>
+                ) : null
+              ) : (
                 <View style={styles.card}>
-                  <Text style={styles.title}>Primero, queremos conocerte</Text>
+                  <Text style={styles.title}>Armá tu sesión</Text>
                   <Text style={styles.body}>
-                    Contanos tu experiencia, el material habitual y tus
-                    limitaciones. Después podés entrenar todos los días que
-                    quieras: iremos adaptando la próxima sesión.
+                    {orientations[orientation].focus}
                   </Text>
-                  <Button
-                    title="Configurar mi entrenador"
-                    onPress={() => setPlanning(true)}
-                  />
-                </View>
-              ) : null
-            ) : (
-              <View style={styles.card}>
-                <Text style={styles.title}>Armá tu sesión</Text>
-                <Text style={styles.body}>
-                  {orientations[orientation].focus}
-                </Text>
-                <Text style={styles.muted}>
-                  Elegí tus ejercicios y consultá siempre la guía.
-                </Text>
-                {orientation === "free"
-                  ? exercises.map((e) => (
-                      <View key={e.id} style={styles.preview}>
+                  <Text style={styles.muted}>
+                    Elegí tus ejercicios y consultá siempre la guía.
+                  </Text>
+                  {orientation === "free"
+                    ? exercises.map((e) => (
+                        <View key={e.id} style={styles.preview}>
+                          <Pressable
+                            style={{ flex: 1 }}
+                            onPress={() =>
+                              setSelected((s) =>
+                                s.includes(e.id)
+                                  ? s.filter((id) => id !== e.id)
+                                  : [...s, e.id],
+                              )
+                            }
+                          >
+                            <Text style={styles.body}>
+                              {selected.includes(e.id) ? "✓" : "○"} {e.name}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => {
+                              setDetail(e);
+                              setVideo(false);
+                            }}
+                          >
+                            <Text style={styles.link}>Guía</Text>
+                          </Pressable>
+                        </View>
+                      ))
+                    : template(orientation).items.map((p) => (
                         <Pressable
-                          style={{ flex: 1 }}
-                          onPress={() =>
-                            setSelected((s) =>
-                              s.includes(e.id)
-                                ? s.filter((id) => id !== e.id)
-                                : [...s, e.id],
-                            )
-                          }
-                        >
-                          <Text style={styles.body}>
-                            {selected.includes(e.id) ? "✓" : "○"} {e.name}
-                          </Text>
-                        </Pressable>
-                        <Pressable
+                          key={p.exercise.id}
                           onPress={() => {
-                            setDetail(e);
+                            setDetail(p.exercise);
                             setVideo(false);
                           }}
+                          style={styles.preview}
                         >
-                          <Text style={styles.link}>Guía</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.body}>{p.exercise.name}</Text>
+                            <Text style={styles.muted}>
+                              {p.sets} series × {p.reps} rep.{" "}
+                              {(p.perSide ?? p.exercise.id === "bird-dog")
+                                ? "por lado"
+                                : ""}
+                            </Text>
+                          </View>
+                          <Text style={styles.link}>Cómo hacerlo ↗</Text>
                         </Pressable>
-                      </View>
-                    ))
-                  : template(orientation).items.map((p) => (
-                      <Pressable
-                        key={p.exercise.id}
-                        onPress={() => {
-                          setDetail(p.exercise);
-                          setVideo(false);
-                        }}
-                        style={styles.preview}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.body}>{p.exercise.name}</Text>
-                          <Text style={styles.muted}>
-                            {p.sets} series × {p.reps} rep.{" "}
-                            {(p.perSide ?? p.exercise.id === "bird-dog")
-                              ? "por lado"
-                              : ""}
-                          </Text>
-                        </View>
-                        <Text style={styles.link}>Cómo hacerlo ↗</Text>
-                      </Pressable>
-                    ))}
-                <Button
-                  title={"Comenzar sesión libre"}
-                  disabled={!selected.length}
-                  onPress={() => start()}
-                />
+                      ))}
+                  <Button
+                    title={"Comenzar sesión libre"}
+                    disabled={!selected.length}
+                    onPress={() => start()}
+                  />
+                </View>
+              )}
+              <View style={styles.softCard}>
+                <Text style={styles.title}>Una sesión a la vez</Text>
+                <Text style={styles.body}>
+                  {!online
+                    ? "Tu entrenador vuelve cuando recuperes la conexión. Podés seguir entrenando y registrar tu progreso."
+                    : "Cada vez que vuelvas, elegiremos la próxima carga según lo que ya hiciste. Tu historial guía el entrenamiento; una meta semanal no te limita."}
+                </Text>
               </View>
-            )}
-            <View style={styles.softCard}>
-              <Text style={styles.title}>Una sesión a la vez</Text>
-              <Text style={styles.body}>
-                {!online
-                  ? "Tu entrenador vuelve cuando recuperes la conexión. Podés seguir entrenando y registrar tu progreso."
-                  : "Cada vez que vuelvas, elegiremos la próxima carga según lo que ya hiciste. Tu historial guía el entrenamiento; una meta semanal no te limita."}
-              </Text>
-            </View>
-          </>
-        )}
+            </>
+          )}
         {tab === "today" && session && (
           <>
             <Text style={styles.hero}>{session.routine.name}</Text>

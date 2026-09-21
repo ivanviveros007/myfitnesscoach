@@ -115,6 +115,44 @@ function loadInsight(activities: PhysicalActivity[], sessions: Session[]) {
   };
 }
 
+export function TrainingCalendarCard({
+  plan,
+  activities,
+  onOpen,
+}: {
+  plan: WeeklyPlan | null;
+  activities: PhysicalActivity[];
+  onOpen: () => void;
+}) {
+  const planned = activities.filter(
+    (activity) => activity.status === "planned",
+  ).length;
+  const sessions = plan?.routines.length ?? 0;
+  const total = planned + sessions;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Planificá tu semana"
+      onPress={onOpen}
+      style={({ pressed }) => [s.entryCard, pressed && s.entryCardPressed]}
+    >
+      <View style={s.entryIcon}>
+        <Text style={s.entryIconText}>＋</Text>
+      </View>
+      <View style={s.entryCopy}>
+        <Text style={s.entryKicker}>TU AGENDA</Text>
+        <Text style={s.entryTitle}>Planificá tu semana</Text>
+        <Text style={s.entryBody}>
+          {total
+            ? `${total} ${total === 1 ? "actividad cargada" : "actividades cargadas"} · Revisar calendario`
+            : "Organizá entrenamientos, partidos y recuperación"}
+        </Text>
+      </View>
+      <Text style={s.entryArrow}>›</Text>
+    </Pressable>
+  );
+}
+
 export function TrainingCalendar({
   plan,
   activities,
@@ -301,6 +339,40 @@ const displayFont = Platform.select({
   android: "sans-serif-condensed",
 });
 const s = StyleSheet.create({
+  entryCard: {
+    minHeight: 112,
+    borderRadius: 24,
+    padding: 18,
+    backgroundColor: "#e8eddc",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  entryCardPressed: { opacity: 0.84, transform: [{ scale: 0.99 }] },
+  entryIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  entryIconText: { color: "#173e34", fontSize: 28, fontWeight: "700" },
+  entryCopy: { flex: 1, gap: 2 },
+  entryKicker: {
+    color: "#718578",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
+  entryTitle: {
+    fontFamily: displayFont,
+    color: "#173e34",
+    fontSize: 25,
+    fontWeight: "900",
+  },
+  entryBody: { color: "#5d7165", fontSize: 12, lineHeight: 17 },
+  entryArrow: { color: "#173e34", fontSize: 32, fontWeight: "400" },
   container: { gap: 16 },
   heading: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   kicker: {
