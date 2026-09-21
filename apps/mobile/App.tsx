@@ -865,6 +865,27 @@ function Main() {
                 setActivityNotes(activity.notes ?? "");
                 setActivitySheet(true);
               }}
+              onDeleteActivity={(activity) => {
+                Alert.alert(
+                  "Eliminar actividad",
+                  `¿Querés eliminar ${activity.name.toLowerCase()} del calendario?`,
+                  [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                      text: "Eliminar",
+                      style: "destructive",
+                      onPress: () => {
+                        storage.deleteActivity(owner, activity.id);
+                        setTick((value) => value + 1);
+                        setNotice("Actividad eliminada del calendario");
+                        void queryClient.invalidateQueries({
+                          queryKey: ["daily-training"],
+                        });
+                      },
+                    },
+                  ],
+                );
+              }}
               aiInsight={
                 dailyTraining?.choices.find(
                   (choice) => choice.key === "recommended",
@@ -1659,7 +1680,7 @@ function Main() {
             ).map(([key, label]) => (
               <Pressable
                 key={key}
-                onPress={() => setActivityStatus(key)}
+                onPressIn={() => setActivityStatus(key)}
                 style={[
                   styles.activityChoice,
                   activityStatus === key && styles.activityChoiceActive,
@@ -1692,7 +1713,7 @@ function Main() {
             ).map(([key, label]) => (
               <Pressable
                 key={key}
-                onPress={() => setActivityType(key)}
+                onPressIn={() => setActivityType(key)}
                 style={[
                   styles.activityChoice,
                   activityType === key && styles.activityChoiceActive,
@@ -1730,7 +1751,7 @@ function Main() {
               return (
                 <Pressable
                   key={key}
-                  onPress={() =>
+                  onPressIn={() =>
                     setActivityFocuses((current) =>
                       selectedFocus
                         ? current.filter((focus) => focus !== key)
@@ -1783,7 +1804,7 @@ function Main() {
             ).map(([key, label]) => (
               <Pressable
                 key={key}
-                onPress={() => setActivityIntensity(key)}
+                onPressIn={() => setActivityIntensity(key)}
                 style={[
                   styles.activityChoice,
                   activityIntensity === key && styles.activityChoiceActive,

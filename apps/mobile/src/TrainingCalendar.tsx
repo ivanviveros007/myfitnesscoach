@@ -162,6 +162,7 @@ export function TrainingCalendar({
   onViewPlan,
   onStart,
   onEditActivity,
+  onDeleteActivity,
   aiInsight,
 }: {
   plan: WeeklyPlan | null;
@@ -172,6 +173,7 @@ export function TrainingCalendar({
   onViewPlan: () => void;
   onStart: (routine: Routine) => void;
   onEditActivity: (activity: PhysicalActivity) => void;
+  onDeleteActivity: (activity: PhysicalActivity) => void;
   aiInsight?: string;
 }) {
   const week =
@@ -284,11 +286,7 @@ export function TrainingCalendar({
                   </Pressable>
                 ))}
                 {dayActivities.map((activity) => (
-                  <Pressable
-                    key={activity.id}
-                    onPress={() => onEditActivity(activity)}
-                    style={s.activityEvent}
-                  >
+                  <View key={activity.id} style={s.activityEvent}>
                     <View style={s.eventTop}>
                       <Text style={s.eventState}>
                         {activity.status === "planned"
@@ -309,8 +307,29 @@ export function TrainingCalendar({
                         </Text>
                       ))}
                     </View>
-                    <Text style={s.editHint}>Tocar para editar</Text>
-                  </Pressable>
+                    <View style={s.activityActions}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar ${activity.name}`}
+                        onPress={() => onEditActivity(activity)}
+                        style={s.activityAction}
+                      >
+                        <Text style={s.activityActionText}>Editar</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Eliminar ${activity.name}`}
+                        onPress={() => onDeleteActivity(activity)}
+                        style={[s.activityAction, s.deleteAction]}
+                      >
+                        <Text
+                          style={[s.activityActionText, s.deleteActionText]}
+                        >
+                          Eliminar
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 ))}
                 {!routines.length && !dayActivities.length && (
                   <Text style={s.empty}>Sin actividades planificadas</Text>
@@ -491,7 +510,18 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
   },
-  editHint: { color: "#728278", fontSize: 10, fontWeight: "700" },
+  activityActions: { flexDirection: "row", gap: 7, marginTop: 4 },
+  activityAction: {
+    minHeight: 34,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+  },
+  activityActionText: { color: "#173e34", fontSize: 11, fontWeight: "900" },
+  deleteAction: { backgroundColor: "#f5e6e3" },
+  deleteActionText: { color: "#9a3f35" },
   empty: { color: "#98a59d", fontSize: 13, paddingVertical: 4 },
   addButton: {
     minHeight: 38,
