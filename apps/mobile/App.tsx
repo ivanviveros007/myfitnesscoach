@@ -30,7 +30,7 @@ import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
 import { BottomSheet } from "@expo/ui";
 import { Button } from "./src/AppButton";
-import { WeekPlanner } from "./src/WeekPlanner";
+import { WeekPlanner, WeeklyPlanCard } from "./src/WeekPlanner";
 import { PlanOverview } from "./src/PlanOverview";
 import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
@@ -147,6 +147,8 @@ function Main() {
       setLibrary(false);
     } else if (planning) {
       setPlanning(false);
+    } else if (showPlan) {
+      setShowPlan(false);
     } else if (tab !== "today") {
       setTab("today");
     } else if (session && isSessionActive(session)) {
@@ -172,10 +174,10 @@ function Main() {
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", goBack);
     return () => sub.remove();
-  }, [detail, tab, session, planning, library]);
+  }, [detail, tab, session, planning, library, showPlan]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [tab, session?.id, planning]);
+  }, [tab, session?.id, planning, showPlan]);
   const owner = account?.userId ?? "guest";
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
@@ -367,6 +369,7 @@ function Main() {
     ]);
     setPlanWeek(next.input.week);
     setPlanning(false);
+    setShowPlan(true);
     setTick((t) => t + 1);
   }
   function savePhysicalActivity() {
@@ -750,7 +753,7 @@ function Main() {
           />
         </View>
       </View>
-      {(session || planning || tab !== "today") && (
+      {(session || planning || showPlan || tab !== "today") && (
         <View style={styles.backBar}>
           <Pressable
             accessibilityRole="button"
@@ -777,7 +780,31 @@ function Main() {
             onCancel={() => setPlanning(false)}
           />
         )}
-        {tab === "today" && !session && !planning && (
+        {tab === "today" &&
+          !session &&
+          !planning &&
+          showPlan &&
+          profile &&
+          effectivePlan && (
+            <PlanOverview
+              plan={effectivePlan}
+              onStart={start}
+              onEdit={() => setPlanning(true)}
+              onGuide={(e) => {
+                setDetail(e);
+                setVideo(false);
+              }}
+              completed={rows
+                .filter((r) => r.session.finishedAt)
+                .map((r) => r.session.routine.id)}
+              favoriteBlocks={favoriteBlocks}
+              onFavoriteBlock={(id) => {
+                storage.toggleFavorite(owner, "block", id);
+                setTick((value) => value + 1);
+              }}
+            />
+          )}
+        {tab === "today" && !session && !planning && !showPlan && (
           <>
             <CurrentWeek
               sessions={rows.map((row) => row.session)}
@@ -818,6 +845,14 @@ function Main() {
                   const resumed = resumedSession(active.session);
                   persist(resumed);
                 }}
+              />
+            )}
+            {orientation !== "free" && profile && (
+              <WeeklyPlanCard
+                plan={effectivePlan}
+                saved={!!plan}
+                onEdit={() => setPlanning(true)}
+                onView={() => setShowPlan(true)}
               />
             )}
             {profile && (
@@ -877,27 +912,7 @@ function Main() {
               />
             )}
             {orientation !== "free" ? (
-              profile && effectivePlan && todayRoutine ? (
-                showPlan ? (
-                  <PlanOverview
-                    plan={effectivePlan}
-                    onStart={start}
-                    onEdit={() => setPlanning(true)}
-                    onGuide={(e) => {
-                      setDetail(e);
-                      setVideo(false);
-                    }}
-                    completed={rows
-                      .filter((r) => r.session.finishedAt)
-                      .map((r) => r.session.routine.id)}
-                    favoriteBlocks={favoriteBlocks}
-                    onFavoriteBlock={(id) => {
-                      storage.toggleFavorite(owner, "block", id);
-                      setTick((value) => value + 1);
-                    }}
-                  />
-                ) : null
-              ) : (
+              !profile || !effectivePlan || !todayRoutine ? (
                 <View style={styles.card}>
                   <Text style={styles.title}>Primero, queremos conocerte</Text>
                   <Text style={styles.body}>
@@ -910,7 +925,7 @@ function Main() {
                     onPress={() => setPlanning(true)}
                   />
                 </View>
-              )
+              ) : null
             ) : (
               <View style={styles.card}>
                 <Text style={styles.title}>Armá tu sesión</Text>

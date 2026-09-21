@@ -75,11 +75,8 @@ export function WeekPlanner({
     useState<TrainingPreference>(profile?.trainingPreference ?? "coach");
   const [goals, setGoals] = useState<FitnessGoal[]>(profile?.goals ?? []);
   const [goalNote, setGoalNote] = useState(profile?.goalNote ?? "");
-  const [classicDaysPerWeek, setClassicDaysPerWeek] = useState<2 | 3 | 4 | 5>(
-    (profile?.classicDaysPerWeek as 2 | 3 | 4 | 5 | undefined) ?? 3,
-  );
   const [week, setWeek] = useState(previous?.input.week ?? currentWeek());
-  const days = previous?.input.days ?? [0, 2, 4, 6];
+  const [days, setDays] = useState<number[]>(previous?.input.days ?? [0, 2, 4]);
   const [sportDays, setSportDays] = useState<number[]>(
     previous?.input.sportDays ?? [],
   );
@@ -89,7 +86,13 @@ export function WeekPlanner({
     [readiness, setReadiness] = useState<WeekInput["readiness"]>(
       previous?.input.readiness ?? "normal",
     );
-  const complete = experience && equipment && limitations && goals.length > 0;
+  const complete =
+    experience &&
+    equipment &&
+    limitations &&
+    goals.length > 0 &&
+    days.length >= 2 &&
+    days.length <= 4;
   function create() {
     if (!complete) return;
     try {
@@ -103,7 +106,7 @@ export function WeekPlanner({
           trainingPreference,
           goals,
           goalNote,
-          classicDaysPerWeek,
+          classicDaysPerWeek: days.length,
         }),
         { week, orientation, days, sportDays, minutes, readiness },
       );
@@ -116,8 +119,8 @@ export function WeekPlanner({
     <View style={s.container}>
       <Text style={s.title}>Configurá tu entrenador</Text>
       <Text style={s.body}>
-        No necesitás anticipar cuántas veces vas a venir. Con estos datos
-        prepararemos la mejor próxima sesión cada vez que entrenes.
+        Elegí tus días disponibles y contanos qué querés mejorar. Organizaremos
+        la semana completa alrededor de tus entrenamientos y partidos.
       </Text>
       <Text style={s.label}>¿Cómo querés entrenar?</Text>
       <Choices
@@ -178,21 +181,6 @@ export function WeekPlanner({
         placeholder="Ej.: quiero ser más rápido, potente y rematar más fuerte en pádel"
         style={s.input}
       />
-      {trainingPreference === "classic" && (
-        <>
-          <Text style={s.label}>Días de gimnasio por semana</Text>
-          <Choices
-            values={[
-              [2, "2 días"],
-              [3, "3 días"],
-              [4, "4 días"],
-              [5, "5 días"],
-            ]}
-            value={classicDaysPerWeek}
-            onChange={setClassicDaysPerWeek}
-          />
-        </>
-      )}
       <Text style={s.label}>Experiencia con fuerza</Text>
       <Choices
         values={[
@@ -264,6 +252,44 @@ export function WeekPlanner({
         value={week}
         onChange={setWeek}
       />
+      <Text style={s.label}>¿Qué días querés entrenar?</Text>
+      <Text style={s.body}>
+        Elegí entre 2 y 4 días. Podés volver a ajustar la semana cuando cambien
+        tus horarios.
+      </Text>
+      <View style={s.dayGrid}>
+        {dayNames.map((name, i) => {
+          const active = days.includes(i);
+          const sport = sportDays.includes(i);
+          return (
+            <Pressable
+              key={`training-${name}`}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: active }}
+              onPress={() =>
+                setDays((current) =>
+                  active
+                    ? current.filter((day) => day !== i)
+                    : current.length < 4
+                      ? [...current, i].sort((a, b) => a - b)
+                      : current,
+                )
+              }
+              style={[s.day, active && s.daySelected]}
+            >
+              <Text style={[s.dayName, active && s.dayNameSelected]}>
+                {name.slice(0, 3)}
+              </Text>
+              <Text style={[s.dayState, active && s.dayStateSelected]}>
+                {active ? "ENTRENO" : sport ? "ACTIVIDAD" : "LIBRE"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {days.length < 2 && (
+        <Text style={s.warning}>Elegí al menos 2 días de entrenamiento.</Text>
+      )}
       <Text style={s.label}>Tiempo por sesión</Text>
       <Choices
         values={[
@@ -309,7 +335,7 @@ export function WeekPlanner({
         onChange={setReadiness}
       />
       <Button
-        title="Guardar y preparar mi sesión"
+        title="Guardar planificación semanal"
         disabled={!complete}
         onPress={create}
       />
@@ -321,12 +347,168 @@ export function WeekPlanner({
     </View>
   );
 }
+
+export function WeeklyPlanCard({
+  plan,
+  saved,
+  onEdit,
+  onView,
+}: {
+  plan: WeeklyPlan | null;
+  saved: boolean;
+  onEdit: () => void;
+  onView: () => void;
+}) {
+  const trainingDays = plan?.input.days ?? [];
+  const sportDays = plan?.input.sportDays ?? [];
+  return (
+    <View style={s.weekCard}>
+      <View style={s.weekCardTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.weekKicker}>TU SEMANA</Text>
+          <Text style={s.weekTitle}>
+            {saved ? "Entrenamientos planificados" : "Planificá tu semana"}
+          </Text>
+        </View>
+        {!!trainingDays.length && (
+          <View style={s.weekCount}>
+            <Text style={s.weekCountNumber}>{trainingDays.length}</Text>
+            <Text style={s.weekCountLabel}>DÍAS</Text>
+          </View>
+        )}
+      </View>
+      <Text style={s.body}>
+        {saved
+          ? "Revisá cada sesión, tus días de actividad y la distribución de carga."
+          : "Elegí cuándo entrenar y cuándo jugás. El Coach distribuirá fuerza, potencia, cardio y recuperación."}
+      </Text>
+      {!!trainingDays.length && (
+        <View style={s.weekDays}>
+          {dayNames.map((name, index) => {
+            const training = trainingDays.includes(index);
+            const sport = sportDays.includes(index);
+            return (
+              <View
+                key={`summary-${name}`}
+                style={[
+                  s.weekDay,
+                  training && s.weekDayTraining,
+                  sport && !training && s.weekDaySport,
+                ]}
+              >
+                <Text
+                  style={[s.weekDayText, training && s.weekDayTextTraining]}
+                >
+                  {name.slice(0, 1)}
+                </Text>
+                {(training || sport) && <View style={s.weekDayDot} />}
+              </View>
+            );
+          })}
+        </View>
+      )}
+      <View style={s.weekActions}>
+        <Pressable style={s.weekPrimary} onPress={onEdit}>
+          <Text style={s.weekPrimaryText}>
+            {saved ? "Ajustar semana" : "Planificar semana"}
+          </Text>
+        </Pressable>
+        {plan && (
+          <Pressable style={s.weekSecondary} onPress={onView}>
+            <Text style={s.weekSecondaryText}>Ver plan →</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
 const s = StyleSheet.create({
   container: { gap: 18 },
   title: { fontSize: 28, fontWeight: "700", color: "#173e34" },
   label: { fontSize: 17, fontWeight: "700", color: "#173e34", marginTop: 8 },
   body: { fontSize: 15, lineHeight: 23, color: "#43594b" },
   choices: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  dayGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  day: {
+    width: "22%",
+    minWidth: 70,
+    minHeight: 70,
+    padding: 10,
+    borderRadius: 18,
+    backgroundColor: "#e8ede5",
+    justifyContent: "space-between",
+  },
+  daySelected: { backgroundColor: "#214d3e" },
+  dayName: { color: "#214d3e", fontSize: 17, fontWeight: "800" },
+  dayNameSelected: { color: "#c8ff63" },
+  dayState: { color: "#738379", fontSize: 9, fontWeight: "800" },
+  dayStateSelected: { color: "white" },
+  warning: { color: "#9a542e", fontSize: 13, fontWeight: "700" },
+  weekCard: {
+    padding: 20,
+    borderRadius: 26,
+    backgroundColor: "#f9faf7",
+    gap: 14,
+    borderWidth: 1,
+    borderColor: "#e1e8de",
+  },
+  weekCardTop: { flexDirection: "row", alignItems: "center", gap: 14 },
+  weekKicker: {
+    color: "#789083",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.8,
+  },
+  weekTitle: { color: "#173e34", fontSize: 23, fontWeight: "900" },
+  weekCount: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekCountNumber: { color: "#173e34", fontSize: 23, fontWeight: "900" },
+  weekCountLabel: { color: "#173e34", fontSize: 8, fontWeight: "900" },
+  weekDays: { flexDirection: "row", justifyContent: "space-between" },
+  weekDay: {
+    width: 37,
+    height: 45,
+    borderRadius: 16,
+    backgroundColor: "#e8ede5",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  weekDayTraining: { backgroundColor: "#214d3e" },
+  weekDaySport: { borderWidth: 2, borderColor: "#9abe66" },
+  weekDayText: { color: "#738379", fontSize: 13, fontWeight: "800" },
+  weekDayTextTraining: { color: "white" },
+  weekDayDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#c8ff63",
+  },
+  weekActions: { flexDirection: "row", gap: 10 },
+  weekPrimary: {
+    minHeight: 48,
+    paddingHorizontal: 17,
+    borderRadius: 16,
+    backgroundColor: "#214d3e",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekPrimaryText: { color: "#c8ff63", fontSize: 14, fontWeight: "900" },
+  weekSecondary: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 16,
+    backgroundColor: "#e8ede5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekSecondaryText: { color: "#173e34", fontSize: 14, fontWeight: "800" },
   chip: {
     minHeight: 48,
     paddingVertical: 14,
