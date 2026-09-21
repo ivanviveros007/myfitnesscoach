@@ -161,6 +161,7 @@ export function TrainingCalendar({
   onEditPlan,
   onViewPlan,
   onStart,
+  onDeleteRoutine,
   onEditActivity,
   onDeleteActivity,
   aiInsight,
@@ -172,6 +173,7 @@ export function TrainingCalendar({
   onEditPlan: () => void;
   onViewPlan: () => void;
   onStart: (routine: Routine) => void;
+  onDeleteRoutine: (routine: Routine) => void;
   onEditActivity: (activity: PhysicalActivity) => void;
   onDeleteActivity: (activity: PhysicalActivity) => void;
   aiInsight?: string;
@@ -269,11 +271,7 @@ export function TrainingCalendar({
               </View>
               <View style={s.dayEvents}>
                 {routines.map((routine) => (
-                  <Pressable
-                    key={routine.id}
-                    onPress={() => onStart(routine)}
-                    style={s.workoutEvent}
-                  >
+                  <View key={routine.id} style={s.workoutEvent}>
                     <Text style={s.eventState}>ENTRENAMIENTO PROPUESTO</Text>
                     <Text style={s.eventTitle}>{routine.name}</Text>
                     <View style={s.tags}>
@@ -283,7 +281,37 @@ export function TrainingCalendar({
                         </Text>
                       ))}
                     </View>
-                  </Pressable>
+                    <View style={s.workoutActions}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => onStart(routine)}
+                        style={[s.workoutAction, s.startWorkoutAction]}
+                      >
+                        <Text
+                          style={[
+                            s.workoutActionText,
+                            s.startWorkoutActionText,
+                          ]}
+                        >
+                          Ver entrenamiento
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={onEditPlan}
+                        style={s.workoutAction}
+                      >
+                        <Text style={s.workoutActionText}>Editar</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => onDeleteRoutine(routine)}
+                        style={s.workoutAction}
+                      >
+                        <Text style={s.workoutActionText}>Quitar</Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 ))}
                 {dayActivities.map((activity) => (
                   <View key={activity.id} style={s.activityEvent}>
@@ -487,6 +515,23 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   eventTitle: { color: "white", fontSize: 16, fontWeight: "900" },
+  workoutActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 5,
+  },
+  workoutAction: {
+    minHeight: 32,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  workoutActionText: { color: "white", fontSize: 10, fontWeight: "900" },
+  startWorkoutAction: { backgroundColor: "#c8ff63" },
+  startWorkoutActionText: { color: "#173e34" },
   activityTitle: { color: "#173e34", fontSize: 16, fontWeight: "900" },
   duration: { color: "#728278", fontSize: 11, fontWeight: "800" },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5 },

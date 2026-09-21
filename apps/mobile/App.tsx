@@ -852,6 +852,38 @@ function Main() {
                 setShowPlan(true);
               }}
               onStart={start}
+              onDeleteRoutine={(routine) => {
+                if (!effectivePlan) return;
+                Alert.alert(
+                  "Quitar entrenamiento",
+                  `¿Querés quitar ${routine.name} de esta semana?`,
+                  [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                      text: "Quitar",
+                      style: "destructive",
+                      onPress: () => {
+                        const next = {
+                          ...effectivePlan,
+                          routines: effectivePlan.routines.filter(
+                            (item) => item.id !== routine.id,
+                          ),
+                        };
+                        const key = `plan:${next.input.orientation}:${next.input.week}`;
+                        storage.writeSettings(owner, [
+                          { key: "profile", value: next.profile },
+                          { key, value: next },
+                        ]);
+                        setTick((value) => value + 1);
+                        setNotice("Entrenamiento quitado de la semana");
+                        void queryClient.invalidateQueries({
+                          queryKey: ["daily-training"],
+                        });
+                      },
+                    },
+                  ],
+                );
+              }}
               onEditActivity={(activity) => {
                 setEditingActivityId(activity.id);
                 setActivityDate(
