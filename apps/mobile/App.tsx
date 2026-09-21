@@ -2077,7 +2077,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3c966e",
   },
   statusDotOffline: { backgroundColor: "#c59044" },
-  content: { padding: 18, gap: 18, paddingBottom: 40 },
+  content: { padding: 18, gap: 18, paddingBottom: 132 },
   finishWorkout: {
     minHeight: 68,
     borderRadius: 22,

@@ -99,7 +99,7 @@ export function FloatingTabs({
 }) {
   return (
     <View style={s.outer}>
-      <BlurView intensity={72} tint="systemChromeMaterialLight" style={s.blur}>
+      <BlurView intensity={48} tint="systemChromeMaterialLight" style={s.blur}>
         <View style={s.bar}>
           {tabs.map((item) => (
             <TabButton
@@ -117,6 +117,11 @@ export function FloatingTabs({
 
 const s = StyleSheet.create({
   outer: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 15,
     paddingHorizontal: 14,
     paddingTop: 7,
     paddingBottom: 7,
@@ -126,7 +131,7 @@ const s = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 27,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.72)",
+    borderColor: "rgba(255,255,255,0.82)",
     shadowColor: "#173e34",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -137,7 +142,7 @@ const s = StyleSheet.create({
     height: 72,
     padding: 6,
     flexDirection: "row",
-    backgroundColor: "rgba(237,241,233,0.68)",
+    backgroundColor: "rgba(237,241,233,0.38)",
   },
   tab: {
     flex: 1,
