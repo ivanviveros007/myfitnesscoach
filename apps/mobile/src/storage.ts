@@ -257,6 +257,14 @@ export function saveActivity(owner: string, activity: PhysicalActivity) {
   writeSetting(owner, "activities", next);
 }
 
+export function deleteActivity(owner: string, id: string) {
+  writeSetting(
+    owner,
+    "activities",
+    activities(owner).filter((item) => item.id !== id),
+  );
+}
+
 export function readDailyTraining(
   owner: string,
   date: string,

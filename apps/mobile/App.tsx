@@ -30,7 +30,8 @@ import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
 import { BottomSheet } from "@expo/ui";
 import { Button } from "./src/AppButton";
-import { WeekPlanner, WeeklyPlanCard } from "./src/WeekPlanner";
+import { WeekPlanner } from "./src/WeekPlanner";
+import { TrainingCalendar } from "./src/TrainingCalendar";
 import { PlanOverview } from "./src/PlanOverview";
 import { Performance } from "./src/Performance";
 import { Library } from "./src/Library";
@@ -65,6 +66,7 @@ import {
   type Session,
   type Exercise,
   type PhysicalActivity,
+  type ActivityFocus,
   isSessionActive,
   profileSchema,
   type TrainingPreference,
@@ -125,6 +127,9 @@ function Main() {
   const [showPlan, setShowPlan] = useState(false);
   const [todayMenu, setTodayMenu] = useState(false);
   const [activitySheet, setActivitySheet] = useState(false);
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(
+    null,
+  );
   const [activityType, setActivityType] =
     useState<PhysicalActivity["type"]>("padel");
   const [activityDate, setActivityDate] = useState(
@@ -133,6 +138,9 @@ function Main() {
   const [activityDuration, setActivityDuration] = useState("60");
   const [activityIntensity, setActivityIntensity] =
     useState<PhysicalActivity["intensity"]>("moderate");
+  const [activityStatus, setActivityStatus] =
+    useState<PhysicalActivity["status"]>("completed");
+  const [activityFocuses, setActivityFocuses] = useState<ActivityFocus[]>([]);
   const [activityNotes, setActivityNotes] = useState("");
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [swapWithoutEquipment, setSwapWithoutEquipment] = useState(false);
@@ -235,14 +243,29 @@ function Main() {
     occurredAt: activity.occurredAt,
     durationMinutes: activity.durationMinutes,
     intensity: activity.intensity,
+    status: activity.status,
+    focuses: activity.focuses,
   }));
   const todayIndex = (new Date().getDay() + 6) % 7;
-  const upcomingSportInDays = effectivePlan?.input.sportDays.length
-    ? Math.min(
-        ...effectivePlan.input.sportDays.map(
-          (sportDay) => (sportDay - todayIndex + 7) % 7,
-        ),
-      )
+  const plannedSportOffsets = physicalActivities
+    .filter(
+      (activity) =>
+        activity.status === "planned" &&
+        ["padel", "football", "tennis"].includes(activity.type),
+    )
+    .map((activity) =>
+      Math.ceil(
+        (new Date(activity.occurredAt).getTime() - Date.now()) / 86400000,
+      ),
+    )
+    .filter((days) => days >= 0 && days <= 7);
+  const planSportOffsets =
+    effectivePlan?.input.sportDays.map(
+      (sportDay) => (sportDay - todayIndex + 7) % 7,
+    ) ?? [];
+  const sportOffsets = [...plannedSportOffsets, ...planSportOffsets];
+  const upcomingSportInDays = sportOffsets.length
+    ? Math.min(...sportOffsets)
     : undefined;
   const profileFingerprint = profile ? JSON.stringify(profile) : "";
   const cachedDailyTraining =
@@ -261,7 +284,10 @@ function Main() {
         .map((item) => `${item.finishedAt}:${item.exerciseIds.join(",")}`)
         .join("|"),
       recentActivities
-        .map((item) => `${item.occurredAt}:${item.type}:${item.intensity}`)
+        .map(
+          (item) =>
+            `${item.occurredAt}:${item.type}:${item.intensity}:${item.status}:${item.focuses.join(",")}`,
+        )
         .join("|"),
       upcomingSportInDays,
       effectivePlan?.input.readiness,
@@ -388,11 +414,12 @@ function Main() {
       return;
     }
     const todayKey = new Date().toLocaleDateString("en-CA");
-    if (activityDate > todayKey) {
+    if (activityDate > todayKey && activityStatus === "completed") {
       Alert.alert("Fecha inválida", "No podés registrar una actividad futura.");
       return;
     }
     const labels: Record<PhysicalActivity["type"], string> = {
+      workout: "Entrenamiento",
       padel: "Partido de pádel",
       football: "Partido de fútbol",
       tennis: "Partido de tenis",
@@ -404,7 +431,7 @@ function Main() {
     };
     try {
       storage.saveActivity(owner, {
-        id: Crypto.randomUUID(),
+        id: editingActivityId ?? Crypto.randomUUID(),
         type: activityType,
         name: labels[activityType],
         occurredAt:
@@ -413,10 +440,14 @@ function Main() {
             : date.toISOString(),
         durationMinutes: duration,
         intensity: activityIntensity,
+        status: activityStatus,
+        focuses: activityFocuses,
         notes: activityNotes.trim() || undefined,
       });
       setActivitySheet(false);
+      setEditingActivityId(null);
       setActivityNotes("");
+      setActivityFocuses([]);
       setTick((value) => value + 1);
       setNotice("Actividad física registrada");
       void queryClient.invalidateQueries({ queryKey: ["daily-training"] });
@@ -848,11 +879,42 @@ function Main() {
               />
             )}
             {orientation !== "free" && profile && (
-              <WeeklyPlanCard
+              <TrainingCalendar
                 plan={effectivePlan}
-                saved={!!plan}
-                onEdit={() => setPlanning(true)}
-                onView={() => setShowPlan(true)}
+                activities={physicalActivities}
+                sessions={rows.map((row) => row.session)}
+                onAdd={(date) => {
+                  setEditingActivityId(null);
+                  setActivityDate(date);
+                  setActivityStatus("planned");
+                  setActivityType("workout");
+                  setActivityDuration("60");
+                  setActivityIntensity("moderate");
+                  setActivityFocuses([]);
+                  setActivityNotes("");
+                  setActivitySheet(true);
+                }}
+                onEditPlan={() => setPlanning(true)}
+                onViewPlan={() => setShowPlan(true)}
+                onStart={start}
+                onEditActivity={(activity) => {
+                  setEditingActivityId(activity.id);
+                  setActivityDate(
+                    new Date(activity.occurredAt).toLocaleDateString("en-CA"),
+                  );
+                  setActivityType(activity.type);
+                  setActivityDuration(String(activity.durationMinutes));
+                  setActivityIntensity(activity.intensity);
+                  setActivityStatus(activity.status);
+                  setActivityFocuses(activity.focuses);
+                  setActivityNotes(activity.notes ?? "");
+                  setActivitySheet(true);
+                }}
+                aiInsight={
+                  dailyTraining?.choices.find(
+                    (choice) => choice.key === "recommended",
+                  )?.insight
+                }
               />
             )}
             {profile && (
@@ -905,7 +967,12 @@ function Main() {
                 sessions={rows.map((row) => row.session)}
                 activities={physicalActivities}
                 onAddActivity={() => {
+                  setEditingActivityId(null);
                   setActivityDate(new Date().toLocaleDateString("en-CA"));
+                  setActivityStatus("completed");
+                  setActivityType("padel");
+                  setActivityFocuses([]);
+                  setActivityNotes("");
                   setActivitySheet(true);
                 }}
                 onOptions={() => setTodayMenu(true)}
@@ -1452,7 +1519,12 @@ function Main() {
             style={styles.sheetAction}
             onPress={() => {
               setTodayMenu(false);
+              setEditingActivityId(null);
               setActivityDate(new Date().toLocaleDateString("en-CA"));
+              setActivityStatus("completed");
+              setActivityType("padel");
+              setActivityFocuses([]);
+              setActivityNotes("");
               setActivitySheet(true);
             }}
           >
@@ -1514,15 +1586,47 @@ function Main() {
             { width: Math.max(280, screenWidth - 32) },
           ]}
         >
-          <Text style={styles.sheetEyebrow}>ACTIVIDAD DEL DÍA</Text>
-          <Text style={styles.sheetTitle}>¿Qué actividad hiciste?</Text>
-          <Text style={styles.sheetBody}>
-            La tendremos en cuenta para tu constancia y para ajustar la próxima
-            sesión.
+          <Text style={styles.sheetEyebrow}>AGENDA DE ENTRENAMIENTO</Text>
+          <Text style={styles.sheetTitle}>
+            {activityStatus === "planned"
+              ? "¿Qué querés planificar?"
+              : "¿Qué actividad hiciste?"}
           </Text>
+          <Text style={styles.sheetBody}>
+            El Coach tendrá en cuenta tanto lo planificado como la carga que
+            realmente completaste.
+          </Text>
+          <Text style={styles.sheetEyebrow}>ESTADO</Text>
           <View style={styles.activityChoices}>
             {(
               [
+                ["planned", "Planificada"],
+                ["completed", "Realizada"],
+              ] as [PhysicalActivity["status"], string][]
+            ).map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() => setActivityStatus(key)}
+                style={[
+                  styles.activityChoice,
+                  activityStatus === key && styles.activityChoiceActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.activityChoiceText,
+                    activityStatus === key && styles.activityChoiceTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.activityChoices}>
+            {(
+              [
+                ["workout", "Entrenamiento"],
                 ["padel", "Pádel"],
                 ["football", "Fútbol"],
                 ["tennis", "Tenis"],
@@ -1551,6 +1655,53 @@ function Main() {
                 </Text>
               </Pressable>
             ))}
+          </View>
+          <Text style={styles.sheetEyebrow}>PROPÓSITO</Text>
+          <Text style={styles.sheetBody}>
+            Podés elegir varias palabras para previsualizar la intención del
+            día.
+          </Text>
+          <View style={styles.activityChoices}>
+            {(
+              [
+                ["power", "Potencia"],
+                ["endurance", "Resistencia"],
+                ["strength", "Fuerza"],
+                ["mobility", "Movilidad"],
+                ["recovery", "Recuperación"],
+                ["conditioning", "Cardio"],
+                ["technique", "Técnica"],
+              ] as [ActivityFocus, string][]
+            ).map(([key, label]) => {
+              const selectedFocus = activityFocuses.includes(key);
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() =>
+                    setActivityFocuses((current) =>
+                      selectedFocus
+                        ? current.filter((focus) => focus !== key)
+                        : current.length < 4
+                          ? [...current, key]
+                          : current,
+                    )
+                  }
+                  style={[
+                    styles.activityChoice,
+                    selectedFocus && styles.activityChoiceActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.activityChoiceText,
+                      selectedFocus && styles.activityChoiceTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
           <View style={styles.activityFields}>
             <TextInput
@@ -1604,7 +1755,26 @@ function Main() {
             maxLength={500}
             style={styles.input}
           />
-          <Button title="Guardar actividad" onPress={savePhysicalActivity} />
+          <Button
+            title={
+              activityStatus === "planned"
+                ? "Agregar al calendario"
+                : "Guardar actividad"
+            }
+            onPress={savePhysicalActivity}
+          />
+          {editingActivityId && (
+            <Button
+              secondary
+              title="Eliminar del calendario"
+              onPress={() => {
+                storage.deleteActivity(owner, editingActivityId);
+                setEditingActivityId(null);
+                setActivitySheet(false);
+                setTick((value) => value + 1);
+              }}
+            />
+          )}
         </ScrollView>
       </BottomSheet>
       <BottomSheet

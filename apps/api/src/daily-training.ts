@@ -453,7 +453,12 @@ export function makeDailyRoutines(
     const elapsed =
       new Date(`${dateKey}T23:59:59`).getTime() -
       new Date(activity.occurredAt).getTime();
-    return elapsed >= 0 && elapsed <= 36 * 60 * 60 * 1000;
+    return (
+      (elapsed >= 0 && elapsed <= 72 * 60 * 60 * 1000) ||
+      (activity.status === "planned" &&
+        elapsed < 0 &&
+        elapsed >= -7 * 24 * 60 * 60 * 1000)
+    );
   });
   const recentRegions = new Set(
     pool
@@ -463,6 +468,7 @@ export function makeDailyRoutines(
   const activityRegions: Partial<
     Record<(typeof recentActivities)[number]["type"], string[]>
   > = {
+    workout: [],
     padel: [
       "legs",
       "quads",
@@ -481,9 +487,20 @@ export function makeDailyRoutines(
     walking: ["legs", "calves"],
   };
   for (const activity of recentActivities) {
-    if (activity.intensity === "low") continue;
+    const focuses = activity.focuses ?? [];
+    if (activity.intensity === "low" || focuses.includes("recovery")) continue;
     for (const region of activityRegions[activity.type] ?? [])
       recentRegions.add(region);
+    if (
+      focuses.some((focus) =>
+        ["power", "endurance", "conditioning"].includes(focus),
+      )
+    )
+      for (const region of ["legs", "quads", "hamstrings", "glutes", "calves"])
+        recentRegions.add(region);
+    if (focuses.includes("strength"))
+      for (const region of ["legs", "back", "chest", "shoulders"])
+        recentRegions.add(region);
   }
   return dailyStyles.map(([key, name, tag, goal], styleIndex) => {
     const used = new Set<string>();

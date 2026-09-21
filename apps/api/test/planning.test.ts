@@ -153,14 +153,21 @@ test("fatigue, adjacent gym days and competition reduce load", () => {
     1,
   );
 });
-test("restrictions require adaptation; incomplete or duplicate availability is rejected", () => {
+test("restrictions require adaptation; duplicate availability is rejected", () => {
   assert.equal(
     makeWeeklyPlan({ ...profile, limitations: "review" }, input).routines
       .length,
     0,
   );
   assert.throws(() => makeWeeklyPlan(profile, { ...input, days: [0, 0] }));
-  assert.throws(() => makeWeeklyPlan(profile, { ...input, days: [0] }));
+  assert.equal(
+    makeWeeklyPlan(profile, { ...input, days: [0] }).routines.length,
+    1,
+  );
+  assert.equal(
+    makeWeeklyPlan(profile, { ...input, days: [] }).routines.length,
+    0,
+  );
 });
 test("changing weekly availability does not mutate past plans or catalogue", () => {
   const before = JSON.stringify(exercises);

@@ -70,7 +70,9 @@ function weekStart(date = new Date()) {
 
 function completedDays(sessions: Session[], activities: PhysicalActivity[]) {
   return new Set([
-    ...activities.map((activity) => localKey(new Date(activity.occurredAt))),
+    ...activities
+      .filter((activity) => activity.status === "completed")
+      .map((activity) => localKey(new Date(activity.occurredAt))),
     ...sessions
       .filter((session) => session.finishedAt && !session.cancelledAt)
       .map((session) => localKey(new Date(session.finishedAt!))),
@@ -82,9 +84,9 @@ function weeklyStreak(sessions: Session[], activities: PhysicalActivity[]) {
     ...sessions
       .filter((session) => session.finishedAt && !session.cancelledAt)
       .map((session) => localKey(weekStart(new Date(session.finishedAt!)))),
-    ...activities.map((activity) =>
-      localKey(weekStart(new Date(activity.occurredAt))),
-    ),
+    ...activities
+      .filter((activity) => activity.status === "completed")
+      .map((activity) => localKey(weekStart(new Date(activity.occurredAt)))),
   ]);
   let cursor = weekStart();
   if (!activeWeeks.has(localKey(cursor))) cursor.setDate(cursor.getDate() - 7);

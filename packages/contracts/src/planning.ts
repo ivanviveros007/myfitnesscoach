@@ -38,6 +38,7 @@ export const fitnessGoalSchema = z.enum([
 export type TrainingPreference = z.infer<typeof trainingPreferenceSchema>;
 export type FitnessGoal = z.infer<typeof fitnessGoalSchema>;
 export const physicalActivityTypeSchema = z.enum([
+  "workout",
   "padel",
   "football",
   "tennis",
@@ -47,6 +48,16 @@ export const physicalActivityTypeSchema = z.enum([
   "walking",
   "other",
 ]);
+export const activityFocusSchema = z.enum([
+  "power",
+  "endurance",
+  "strength",
+  "mobility",
+  "recovery",
+  "conditioning",
+  "technique",
+]);
+export type ActivityFocus = z.infer<typeof activityFocusSchema>;
 export const physicalActivitySchema = z.object({
   id: z.uuid(),
   type: physicalActivityTypeSchema,
@@ -54,6 +65,8 @@ export const physicalActivitySchema = z.object({
   occurredAt: z.iso.datetime(),
   durationMinutes: z.number().int().min(1).max(600),
   intensity: z.enum(["low", "moderate", "high"]),
+  status: z.enum(["planned", "completed"]).default("completed"),
+  focuses: z.array(activityFocusSchema).max(4).default([]),
   notes: z.string().max(500).optional(),
 });
 export type PhysicalActivity = z.infer<typeof physicalActivitySchema>;
@@ -78,6 +91,8 @@ export const recentPhysicalActivitySchema = physicalActivitySchema.pick({
   occurredAt: true,
   durationMinutes: true,
   intensity: true,
+  status: true,
+  focuses: true,
 });
 export const dailyTrainingRequestSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -109,7 +124,7 @@ export const weekInputSchema = z
   .object({
     week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     orientation: orientationSchema,
-    days: z.array(z.number().int().min(0).max(6)).min(2).max(4),
+    days: z.array(z.number().int().min(0).max(6)).max(7),
     sportDays: z.array(z.number().int().min(0).max(6)).max(7),
     minutes: z.union([z.literal(30), z.literal(45), z.literal(60)]),
     readiness: z.enum(["normal", "tired"]),

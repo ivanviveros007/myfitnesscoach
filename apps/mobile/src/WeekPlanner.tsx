@@ -86,13 +86,7 @@ export function WeekPlanner({
     [readiness, setReadiness] = useState<WeekInput["readiness"]>(
       previous?.input.readiness ?? "normal",
     );
-  const complete =
-    experience &&
-    equipment &&
-    limitations &&
-    goals.length > 0 &&
-    days.length >= 2 &&
-    days.length <= 4;
+  const complete = experience && equipment && limitations && goals.length > 0;
   function create() {
     if (!complete) return;
     try {
@@ -106,7 +100,7 @@ export function WeekPlanner({
           trainingPreference,
           goals,
           goalNote,
-          classicDaysPerWeek: days.length,
+          classicDaysPerWeek: Math.min(5, Math.max(2, days.length)),
         }),
         { week, orientation, days, sportDays, minutes, readiness },
       );
@@ -254,8 +248,8 @@ export function WeekPlanner({
       />
       <Text style={s.label}>¿Qué días querés entrenar?</Text>
       <Text style={s.body}>
-        Elegí entre 2 y 4 días. Podés volver a ajustar la semana cuando cambien
-        tus horarios.
+        Marcá todos los días que quieras. Después vas a poder sumar varios
+        partidos, actividades o sesiones en el calendario.
       </Text>
       <View style={s.dayGrid}>
         {dayNames.map((name, i) => {
@@ -270,9 +264,7 @@ export function WeekPlanner({
                 setDays((current) =>
                   active
                     ? current.filter((day) => day !== i)
-                    : current.length < 4
-                      ? [...current, i].sort((a, b) => a - b)
-                      : current,
+                    : [...current, i].sort((a, b) => a - b),
                 )
               }
               style={[s.day, active && s.daySelected]}
@@ -287,9 +279,6 @@ export function WeekPlanner({
           );
         })}
       </View>
-      {days.length < 2 && (
-        <Text style={s.warning}>Elegí al menos 2 días de entrenamiento.</Text>
-      )}
       <Text style={s.label}>Tiempo por sesión</Text>
       <Choices
         values={[
