@@ -29,7 +29,7 @@ import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { StatusBar } from "expo-status-bar";
 import { BottomSheet } from "@expo/ui";
-import { Button } from "./src/AppButton";
+import { Button, ChoicePill } from "./src/AppButton";
 import { WeekPlanner } from "./src/WeekPlanner";
 import { TrainingCalendar, TrainingCalendarCard } from "./src/TrainingCalendar";
 import { PlanOverview } from "./src/PlanOverview";
@@ -1731,23 +1731,12 @@ function Main() {
                 ["completed", "Realizada"],
               ] as [PhysicalActivity["status"], string][]
             ).map(([key, label]) => (
-              <Pressable
+              <ChoicePill
                 key={key}
-                onPressIn={() => setActivityStatus(key)}
-                style={[
-                  styles.activityChoice,
-                  activityStatus === key && styles.activityChoiceActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.activityChoiceText,
-                    activityStatus === key && styles.activityChoiceTextActive,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
+                label={label}
+                selected={activityStatus === key}
+                onPress={() => setActivityStatus(key)}
+              />
             ))}
           </View>
           <View style={styles.activityChoices}>
@@ -1764,23 +1753,12 @@ function Main() {
                 ["other", "Otra"],
               ] as [PhysicalActivity["type"], string][]
             ).map(([key, label]) => (
-              <Pressable
+              <ChoicePill
                 key={key}
-                onPressIn={() => setActivityType(key)}
-                style={[
-                  styles.activityChoice,
-                  activityType === key && styles.activityChoiceActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.activityChoiceText,
-                    activityType === key && styles.activityChoiceTextActive,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
+                label={label}
+                selected={activityType === key}
+                onPress={() => setActivityType(key)}
+              />
             ))}
           </View>
           <Text style={styles.sheetEyebrow}>PROPÓSITO</Text>
@@ -1802,9 +1780,11 @@ function Main() {
             ).map(([key, label]) => {
               const selectedFocus = activityFocuses.includes(key);
               return (
-                <Pressable
+                <ChoicePill
                   key={key}
-                  onPressIn={() =>
+                  label={label}
+                  selected={selectedFocus}
+                  onPress={() =>
                     setActivityFocuses((current) =>
                       selectedFocus
                         ? current.filter((focus) => focus !== key)
@@ -1813,20 +1793,7 @@ function Main() {
                           : current,
                     )
                   }
-                  style={[
-                    styles.activityChoice,
-                    selectedFocus && styles.activityChoiceActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.activityChoiceText,
-                      selectedFocus && styles.activityChoiceTextActive,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -1855,24 +1822,12 @@ function Main() {
                 ["high", "Intensa"],
               ] as [PhysicalActivity["intensity"], string][]
             ).map(([key, label]) => (
-              <Pressable
+              <ChoicePill
                 key={key}
-                onPressIn={() => setActivityIntensity(key)}
-                style={[
-                  styles.activityChoice,
-                  activityIntensity === key && styles.activityChoiceActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.activityChoiceText,
-                    activityIntensity === key &&
-                      styles.activityChoiceTextActive,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
+                label={label}
+                selected={activityIntensity === key}
+                onPress={() => setActivityIntensity(key)}
+              />
             ))}
           </View>
           <TextInput
@@ -2483,19 +2438,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
-  activityChoice: {
-    borderRadius: 99,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    backgroundColor: "white",
-  },
-  activityChoiceActive: { backgroundColor: "#c8ff63" },
-  activityChoiceText: {
-    color: "#51675c",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  activityChoiceTextActive: { color: "#173e34" },
   activityFields: { flexDirection: "row", gap: 8 },
   activityField: { flex: 1 },
   reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },

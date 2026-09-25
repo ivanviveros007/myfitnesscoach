@@ -41,3 +41,51 @@ export function Button({
     </Host>
   );
 }
+
+export function ChoicePill({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const height = Math.max(44, Math.ceil(34 + 10 * fontScale));
+  const width = Math.max(
+    76,
+    Math.ceil(label.length * 8.2 * Math.min(fontScale, 1.25) + 34),
+  );
+
+  return (
+    <Host
+      ignoreSafeArea="all"
+      seedColor={selected ? "#c8ff63" : "#f8faf6"}
+      style={{ width, height, flexShrink: 0 }}
+    >
+      <ExpoButton
+        onPress={onPress}
+        variant="filled"
+        style={{
+          width,
+          height,
+          borderRadius: height / 2,
+          paddingHorizontal: 10,
+        }}
+      >
+        <ExpoText
+          style={{ width: width - 20, height: height - 14 }}
+          textStyle={{
+            color: "#173e34",
+            fontSize: 13,
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
+          {label}
+        </ExpoText>
+      </ExpoButton>
+    </Host>
+  );
+}
