@@ -47,6 +47,7 @@ export function TrainingModeSelector({
   const modes: [TrainingPreference, string, string][] = [
     ["coach", "Coach IA", "Recibo una propuesta con un propósito"],
     ["builder", "Armar", "Elijo qué trabajar en cada bloque"],
+    ["ppl", "PPL", "Alterno Push, Pull y Legs"],
     ["classic", "Clásico", "Sigo una división semanal de gimnasio"],
   ];
   return (
@@ -181,30 +182,30 @@ export function WorkoutBuilder({
           {block.items.map((item) => {
             const open = previewId === item.exercise.id;
             return (
-              <View key={item.exercise.id} style={s.exerciseWrap}>
+              <View key={item.exercise.id} style={s.exerciseCard}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ expanded: open }}
                   onPress={() => setPreviewId(open ? null : item.exercise.id)}
-                  style={s.exerciseRow}
+                  style={s.exerciseTap}
                 >
-                  <View style={{ flex: 1 }}>
+                  <View style={s.exerciseImage}>
+                    <ExerciseVisual exercise={item.exercise} />
+                  </View>
+                  <View style={s.exerciseSummary}>
                     <Text style={s.exerciseName}>{item.exercise.name}</Text>
                     <Text style={s.exerciseDose}>
                       {item.sets} series × {item.reps}
                       {item.unit === "seconds" ? " s" : " rep."}
                       {item.perSide ? " por lado" : ""}
                     </Text>
+                    <Text style={s.previewAction}>
+                      {open ? "Ocultar técnica ↑" : "Ver técnica →"}
+                    </Text>
                   </View>
-                  <Text style={s.previewAction}>
-                    {open ? "Cerrar ⌃" : "Ver movimiento ⌄"}
-                  </Text>
                 </Pressable>
                 {open && (
                   <View style={s.exercisePreview}>
-                    <View style={s.diagram}>
-                      <ExerciseVisual exercise={item.exercise} />
-                    </View>
                     <View style={s.previewCopy}>
                       <Text style={s.previewMeta}>{item.exercise.muscles}</Text>
                       <Text style={s.previewMeta}>
@@ -299,6 +300,26 @@ export function ClassicIntro({ days }: { days: number }) {
   );
 }
 
+export function PplIntro({ next }: { next: "push" | "pull" | "legs" }) {
+  const copy = {
+    push: ["Push", "Pecho · hombros · tríceps"],
+    pull: ["Pull", "Espalda · deltoide posterior · bíceps"],
+    legs: ["Legs", "Cuádriceps · femorales · glúteos · pantorrillas"],
+  } as const;
+  return (
+    <View style={s.ppl}>
+      <View style={s.pplBadge}>
+        <Text style={s.pplBadgeText}>PPL</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.kicker}>PRÓXIMA SESIÓN</Text>
+        <Text style={s.pplTitle}>{copy[next][0]}</Text>
+        <Text style={s.pplText}>{copy[next][1]}</Text>
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   section: { gap: 14, marginTop: 10 },
   goalCard: {
@@ -332,9 +353,9 @@ const s = StyleSheet.create({
   },
   adjustText: { color: "#173e34", fontWeight: "900" },
   heading: { color: "#173e34", fontSize: 24, fontWeight: "900" },
-  modeRow: { flexDirection: "row", gap: 8 },
+  modeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   mode: {
-    flex: 1,
+    width: "48.5%",
     minHeight: 108,
     padding: 12,
     borderRadius: 20,
@@ -381,34 +402,38 @@ const s = StyleSheet.create({
     fontWeight: "700",
     marginTop: 3,
   },
-  exerciseWrap: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#dfe6dd",
+  exerciseCard: {
+    overflow: "hidden",
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#dfe6dd",
+    backgroundColor: "#f7f8f4",
+    marginTop: 6,
   },
-  exerciseRow: {
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 9,
+  exerciseTap: { gap: 10 },
+  exerciseImage: {
+    minHeight: 170,
+    padding: 8,
+    backgroundColor: "white",
   },
-  exerciseName: { color: "#173e34", fontSize: 15, fontWeight: "800" },
-  exerciseDose: { color: "#6c7f75", fontSize: 13, marginTop: 2 },
-  previewAction: { color: "#173e34", fontSize: 11, fontWeight: "900" },
+  exerciseSummary: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  exerciseName: { color: "#173e34", fontSize: 18, fontWeight: "900" },
+  exerciseDose: { color: "#526b5f", fontSize: 14, marginTop: 3 },
+  previewAction: {
+    color: "#173e34",
+    fontSize: 12,
+    fontWeight: "900",
+    marginTop: 8,
+  },
   exercisePreview: {
     backgroundColor: "#f2f5ef",
     borderRadius: 18,
     padding: 12,
     gap: 12,
     marginBottom: 8,
-  },
-  diagram: {
-    minHeight: 150,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "white",
-    alignItems: "center",
-    justifyContent: "center",
   },
   previewCopy: { gap: 5 },
   previewMeta: { color: "#65786e", fontSize: 11, fontWeight: "800" },
@@ -446,4 +471,24 @@ const s = StyleSheet.create({
     gap: 7,
     marginTop: 8,
   },
+  ppl: {
+    backgroundColor: "#173e34",
+    borderRadius: 26,
+    padding: 18,
+    gap: 13,
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pplBadge: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "#c8ff63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pplBadgeText: { color: "#173e34", fontSize: 17, fontWeight: "900" },
+  pplTitle: { color: "white", fontSize: 27, fontWeight: "900", marginTop: 2 },
+  pplText: { color: "#c6d4cb", fontSize: 13, marginTop: 2 },
 });

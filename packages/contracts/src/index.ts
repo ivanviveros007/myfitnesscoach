@@ -161,6 +161,7 @@ export const trainingModeSchema = z.enum([
   "free",
   "builder",
   "classic",
+  "ppl",
   "legacy",
 ]);
 export const blockFormatSchema = z.enum([

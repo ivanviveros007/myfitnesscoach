@@ -21,7 +21,7 @@ test("every proposal has warm up plus four populated blocks", () => {
     completedCount: 0,
     profile,
   });
-  assert.equal(choices.length, 13);
+  assert.equal(choices.length, 16);
   for (const choice of choices) {
     assert.equal(choice.routine.blocks?.length, 5);
     assert.equal(choice.routine.blocks?.[0]?.goal, "warmup");
@@ -35,6 +35,31 @@ test("every proposal has warm up plus four populated blocks", () => {
         (item) => (item.exercise.imageUrls?.length ?? 0) >= 2,
       ),
       `${choice.name} contiene un ejercicio sin demostración visual`,
+    );
+  }
+});
+
+test("PPL separates push, pull and legs with useful training volume", () => {
+  const choices = makeDailyRoutines({
+    orientation: "fitness",
+    date: "2026-09-14",
+    completedCount: 0,
+    profile: { ...profile, trainingPreference: "ppl", goals: ["muscle-gain"] },
+  });
+  const ppl = ["ppl-push", "ppl-pull", "ppl-legs"].map((key) =>
+    choices.find((choice) => choice.key === key)!,
+  );
+  assert.deepEqual(
+    ppl.map((choice) => choice.name),
+    ["PPL · Push", "PPL · Pull", "PPL · Legs"],
+  );
+  for (const choice of ppl) {
+    assert.equal(choice.routine.blocks?.length, 5);
+    assert.ok(choice.routine.items.length >= 8);
+    assert.ok(
+      choice.routine.items.every(
+        (item) => (item.exercise.imageUrls?.length ?? 0) >= 2,
+      ),
     );
   }
 });

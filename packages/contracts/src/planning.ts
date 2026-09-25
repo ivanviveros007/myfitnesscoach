@@ -24,7 +24,12 @@ export const blocks = {
   stability: "Estabilidad",
   flexibility: "Flexibilidad",
 };
-export const trainingPreferenceSchema = z.enum(["coach", "builder", "classic"]);
+export const trainingPreferenceSchema = z.enum([
+  "coach",
+  "builder",
+  "classic",
+  "ppl",
+]);
 export const fitnessGoalSchema = z.enum([
   "speed",
   "power",

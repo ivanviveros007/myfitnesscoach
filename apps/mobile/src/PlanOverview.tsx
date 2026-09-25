@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Platform, View, Text, StyleSheet, Pressable } from "react-native";
 import { BottomSheet } from "@expo/ui";
 import {
-  blocks,
   routineBlocks,
   type WeeklyPlan,
   type Routine,
@@ -10,6 +9,7 @@ import {
   type WorkoutBlock,
 } from "@myfitnesscoach/contracts";
 import { Button } from "./AppButton";
+import { ExerciseVisual } from "./ExerciseVisual";
 
 const formatLabel: Record<WorkoutBlock["format"], string> = {
   sets: "SERIES",
@@ -110,55 +110,53 @@ export function PlanOverview({
                       <Text style={s.menuDots}>•••</Text>
                     </Pressable>
                   </View>
-                  <View style={s.prescriptions}>
-                    {block.items.map((item) => (
-                      <View key={item.exercise.id} style={s.prescriptionRow}>
-                        <Text style={s.prescriptionDose}>
-                          {prescription(item)}
-                        </Text>
-                        <Text style={s.prescriptionName}>
-                          {item.exercise.name}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => toggleDetails(block.id)}
                     style={({ pressed }) => [
-                      s.detailButton,
+                      s.blockPreview,
                       pressed && s.pressed,
                     ]}
                   >
-                    <Text style={s.detailButtonText}>
-                      {expanded ? "Ocultar detalle" : "Ver movimientos"}
-                    </Text>
-                    <Text style={s.detailArrow}>{expanded ? "↑" : "→"}</Text>
+                    {(block.items[0]?.exercise.imageUrls?.length ?? 0) >= 2 && (
+                      <View style={s.coverVisual}>
+                        <ExerciseVisual exercise={block.items[0].exercise} />
+                      </View>
+                    )}
+                    <View style={s.previewFooter}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.previewTitle}>
+                          {block.items.length} ejercicios
+                        </Text>
+                        <Text style={s.meta}>
+                          {block.items
+                            .map((item) => item.exercise.name)
+                            .join(" · ")}
+                        </Text>
+                      </View>
+                      <Text style={s.detailArrow}>{expanded ? "↑" : "→"}</Text>
+                    </View>
                   </Pressable>
                   {expanded && (
                     <View style={s.movements}>
-                      <Text style={s.blockPurpose}>{block.purpose}</Text>
-                      {block.items.map((item, itemIndex) => (
+                      {block.items.map((item) => (
                         <Pressable
                           key={item.exercise.id}
                           accessibilityRole="button"
                           onPress={() => onGuide(item.exercise)}
                           style={s.item}
                         >
-                          <View style={s.itemIndex}>
-                            <Text style={s.itemIndexText}>{itemIndex + 1}</Text>
-                          </View>
+                          {(item.exercise.imageUrls?.length ?? 0) >= 2 && (
+                            <View style={s.itemVisual}>
+                              <ExerciseVisual exercise={item.exercise} />
+                            </View>
+                          )}
                           <View style={s.itemCopy}>
-                            <Text style={s.itemBlock}>
-                              {item.block ? blocks[item.block] : "EJERCICIO"}
-                            </Text>
                             <Text style={s.itemTitle}>
                               {item.exercise.name}
                             </Text>
-                            <Text style={s.meta}>
-                              {prescription(item)} · pausa {item.restSeconds} s
-                            </Text>
-                            <Text style={s.link}>Ver técnica y video →</Text>
+                            <Text style={s.meta}>{prescription(item)}</Text>
+                            <Text style={s.link}>Ver técnica →</Text>
                           </View>
                         </Pressable>
                       ))}
@@ -378,6 +376,21 @@ const s = StyleSheet.create({
     letterSpacing: 1,
     color: "#173e34",
   },
+  blockPreview: {
+    overflow: "hidden",
+    borderRadius: 18,
+    backgroundColor: "white",
+  },
+  coverVisual: { minHeight: 180, padding: 8 },
+  previewFooter: {
+    minHeight: 68,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  previewTitle: { color: "#173e34", fontSize: 16, fontWeight: "900" },
   prescriptions: { gap: 10 },
   prescriptionRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   prescriptionDose: {
@@ -409,10 +422,16 @@ const s = StyleSheet.create({
   item: {
     minHeight: 76,
     paddingVertical: 12,
-    flexDirection: "row",
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8dd",
+  },
+  itemVisual: {
+    minHeight: 180,
+    overflow: "hidden",
+    borderRadius: 18,
+    backgroundColor: "white",
+    padding: 8,
   },
   itemIndex: {
     width: 34,

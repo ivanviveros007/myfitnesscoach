@@ -40,6 +40,7 @@ import { FloatingTabs, type AppTab } from "./src/FloatingTabs";
 import { TrainingCarousel } from "./src/TrainingCarousel";
 import {
   ClassicIntro,
+  PplIntro,
   TrainingModeSelector,
   WorkoutBuilder,
 } from "./src/TrainingModeHome";
@@ -114,7 +115,6 @@ function Main() {
     [selected, setSelected] = useState<string[]>([]);
   const [detail, setDetail] = useState<Exercise | null>(null),
     [video, setVideo] = useState(false),
-    [expandedExercise, setExpandedExercise] = useState<string | null>(null),
     [online, setOnline] = useState(true),
     [notice, setNotice] = useState("Guardado en este dispositivo");
   const [email, setEmail] = useState(""),
@@ -364,6 +364,17 @@ function Main() {
             experienceImages[(index + imageOffset) % experienceImages.length]!,
         }))
       : [];
+  const pplOrder = ["ppl-push", "ppl-pull", "ppl-legs"] as const;
+  const completedPpl = rows.filter(
+    ({ session: completed }) =>
+      completed.finishedAt && completed.routine.trainingMode === "ppl",
+  ).length;
+  const nextPplKey = pplOrder[completedPpl % pplOrder.length]!;
+  const pplTrainingChoices = trainingChoices
+    .filter((choice) =>
+      pplOrder.includes(choice.key as (typeof pplOrder)[number]),
+    )
+    .sort((a, b) => (a.key === nextPplKey ? -1 : b.key === nextPplKey ? 1 : 0));
   useEffect(() => {
     if (!online)
       setNotice(
@@ -704,7 +715,6 @@ function Main() {
           : item,
       ),
     });
-    setExpandedExercise(null);
     setSwapIndex(null);
     setSwapWithoutEquipment(false);
     setSwapQuery("");
@@ -1048,6 +1058,26 @@ function Main() {
                     />
                   </>
                 )}
+              {!!pplTrainingChoices.length &&
+                profile?.trainingPreference === "ppl" && (
+                  <>
+                    <PplIntro
+                      next={
+                        nextPplKey.replace("ppl-", "") as
+                          "push" | "pull" | "legs"
+                      }
+                    />
+                    <TrainingCarousel
+                      choices={pplTrainingChoices}
+                      equipment={profile.equipment}
+                      apiUrl={url}
+                      isPersonalizing={dailyTrainingQuery.isFetching}
+                      onStart={(routine) =>
+                        start({ ...routine, trainingMode: "ppl" })
+                      }
+                    />
+                  </>
+                )}
               {!!trainingChoices.length && (
                 <ActivityTracker
                   sessions={rows.map((row) => row.session)}
@@ -1218,7 +1248,8 @@ function Main() {
                         {startingBlock.title}
                       </Text>
                       <Text style={styles.workoutBlockPurpose}>
-                        {startingBlock.purpose}
+                        {startingBlock.items.length} ejercicios ·{" "}
+                        {startingBlock.durationMinutes} min
                       </Text>
                     </View>
                   )}
@@ -1229,64 +1260,54 @@ function Main() {
                       {labels[item.status]}
                     </Text>
                     <Text style={styles.title}>{p.exercise.name}</Text>
-                    {!session.finishedAt && (
+                    <View style={styles.exerciseDoseRow}>
+                      <Text style={styles.exerciseDosePill}>
+                        {p.sets} series · {p.reps}
+                        {p.unit === "seconds" ? " s" : " rep."}
+                        {p.perSide ? " por lado" : ""}
+                      </Text>
+                      <Text style={styles.exerciseRestPill}>
+                        Pausa {p.restSeconds} s
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver técnica de ${p.exercise.name}`}
+                      onPress={() => {
+                        setDetail(p.exercise);
+                        setVideo(false);
+                      }}
+                      style={styles.exerciseHero}
+                    >
+                      <ExerciseVisual exercise={p.exercise} />
+                      <Text style={styles.exerciseHeroLink}>
+                        Ver técnica completa →
+                      </Text>
+                    </Pressable>
+                    <View style={styles.exerciseActions}>
                       <Pressable
                         accessibilityRole="button"
                         onPress={() => {
-                          setSwapWithoutEquipment(false);
-                          setSwapIndex(index);
+                          setDetail(p.exercise);
+                          setVideo(false);
                         }}
-                        style={styles.swapButton}
+                        style={styles.guideLink}
                       >
-                        <Text style={styles.swapButtonText}>
-                          ↻ Reemplazar este ejercicio
-                        </Text>
+                        <Text style={styles.guideLinkText}>Ver técnica</Text>
                       </Pressable>
-                    )}
-                    {p.effort && <Text style={styles.body}>{p.effort}</Text>}
-                    <Button
-                      secondary
-                      title={
-                        expandedExercise === p.exercise.id
-                          ? "Ocultar demostración"
-                          : "Ver demostración"
-                      }
-                      onPress={() =>
-                        setExpandedExercise(
-                          expandedExercise === p.exercise.id
-                            ? null
-                            : p.exercise.id,
-                        )
-                      }
-                    />
-                    {expandedExercise === p.exercise.id && (
-                      <View style={styles.demoPanel}>
-                        <ExerciseVisual exercise={p.exercise} />
-                        <Text style={styles.body}>{p.exercise.steps[0]}</Text>
+                      {!session.finishedAt && (
                         <Pressable
+                          accessibilityRole="button"
                           onPress={() => {
-                            setDetail(p.exercise);
-                            setVideo(false);
+                            setSwapWithoutEquipment(false);
+                            setSwapIndex(index);
                           }}
-                          style={styles.guideLink}
+                          style={styles.swapButton}
                         >
-                          <Text style={styles.guideLinkText}>
-                            Técnica completa y video →
-                          </Text>
+                          <Text style={styles.swapButtonText}>↻ Cambiar</Text>
                         </Pressable>
-                      </View>
-                    )}
-                    <Text style={styles.muted}>
-                      Descanso previsto: {p.restSeconds} s{" "}
-                      {tracksWeight
-                        ? "· Peso adicional en kg"
-                        : p.unit === "seconds"
-                          ? "· Tiempo por serie"
-                          : "· Solo peso corporal"}
-                      {(p.perSide ?? p.exercise.id === "bird-dog")
-                        ? " · Repeticiones por lado"
-                        : ""}
-                    </Text>
+                      )}
+                    </View>
                     {p.restSeconds > 0 && !session.finishedAt && (
                       <RestTimer seconds={p.restSeconds} />
                     )}
@@ -2207,28 +2228,61 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
-  demoPanel: {
-    backgroundColor: "#f2f5ee",
-    borderRadius: 18,
-    padding: 12,
-    gap: 12,
+  exerciseDoseRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  exerciseDosePill: {
+    overflow: "hidden",
+    borderRadius: 99,
+    backgroundColor: "#c8ff63",
+    color: "#173e34",
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    fontSize: 12,
+    fontWeight: "900",
   },
+  exerciseRestPill: {
+    overflow: "hidden",
+    borderRadius: 99,
+    backgroundColor: "#edf2e8",
+    color: "#52675d",
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  exerciseHero: {
+    overflow: "hidden",
+    borderRadius: 20,
+    padding: 8,
+    backgroundColor: "white",
+    gap: 6,
+  },
+  exerciseHeroLink: {
+    color: "#173e34",
+    fontSize: 13,
+    fontWeight: "900",
+    paddingHorizontal: 8,
+    paddingBottom: 7,
+  },
+  exerciseActions: { flexDirection: "row", gap: 8 },
   guideLink: {
-    minHeight: 48,
+    flex: 1,
+    minHeight: 50,
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 15,
     backgroundColor: "#dff5ba",
   },
   guideLinkText: { color: "#173e34", fontWeight: "700", fontSize: 15 },
   swapButton: {
+    flex: 1,
     minHeight: 50,
     paddingHorizontal: 15,
     borderRadius: 15,
     backgroundColor: "#edf2e8",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
   },
   swapButtonText: { color: "#173e34", fontSize: 14, fontWeight: "800" },
   softCard: {

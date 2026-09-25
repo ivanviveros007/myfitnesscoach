@@ -121,6 +121,7 @@ export function WeekPlanner({
         values={[
           ["coach", "El Coach decide por mí"],
           ["builder", "Quiero armar los bloques"],
+          ["ppl", "Push · Pull · Legs"],
           ["classic", "Rutina clásica de gimnasio"],
         ]}
         value={trainingPreference}

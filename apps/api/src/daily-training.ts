@@ -31,6 +31,9 @@ export const dailyStyles = [
   ["hiit", "HIIT", "INTERVALOS · INTENSIDAD", "conditioning"],
   ["hrx", "HRX Training", "HÍBRIDO · RESISTENCIA", "hypertrophy"],
   ["hypertrophy", "Traditional Hypertrophy", "MUSCULACIÓN", "hypertrophy"],
+  ["ppl-push", "PPL · Push", "PECHO · HOMBROS · TRÍCEPS", "hypertrophy"],
+  ["ppl-pull", "PPL · Pull", "ESPALDA · BÍCEPS", "hypertrophy"],
+  ["ppl-legs", "PPL · Legs", "PIERNAS · GLÚTEOS", "hypertrophy"],
 ] as const satisfies readonly (readonly [string, string, string, BlockGoal])[];
 
 type BlockSpec = {
@@ -271,6 +274,85 @@ const modalityBlocks: Record<string, BlockSpec[]> = {
     }),
     b("Pull", "upper-body", ["hypertrophy", "upper-body"], "hypertrophy", 2, {
       patterns: ["horizontal-pull", "vertical-pull", "elbow-flexion"],
+    }),
+    mobility,
+  ],
+  "ppl-push": [
+    b("Pecho", "hypertrophy", ["hypertrophy", "upper-body"], "hypertrophy", 2, {
+      patterns: ["horizontal-push"],
+      regions: ["chest"],
+    }),
+    b(
+      "Hombros",
+      "upper-body",
+      ["hypertrophy", "upper-body"],
+      "hypertrophy",
+      2,
+      {
+        patterns: ["vertical-push", "shoulder-raise"],
+        regions: ["shoulders"],
+      },
+    ),
+    b(
+      "Tríceps",
+      "hypertrophy",
+      ["hypertrophy", "upper-body"],
+      "hypertrophy",
+      1,
+      {
+        patterns: ["elbow-extension"],
+        regions: ["triceps"],
+      },
+    ),
+    mobility,
+  ],
+  "ppl-pull": [
+    b(
+      "Espalda",
+      "upper-body",
+      ["hypertrophy", "upper-body"],
+      "hypertrophy",
+      3,
+      {
+        patterns: ["horizontal-pull", "vertical-pull"],
+        regions: ["back", "lats"],
+      },
+    ),
+    b(
+      "Deltoide posterior",
+      "upper-body",
+      ["hypertrophy", "upper-body"],
+      "hypertrophy",
+      1,
+      {
+        patterns: ["horizontal-pull", "shoulder-raise"],
+        regions: ["shoulders"],
+      },
+    ),
+    b(
+      "Bíceps",
+      "hypertrophy",
+      ["hypertrophy", "upper-body"],
+      "hypertrophy",
+      2,
+      {
+        patterns: ["elbow-flexion"],
+        regions: ["biceps"],
+      },
+    ),
+    mobility,
+  ],
+  "ppl-legs": [
+    b("Cuádriceps", "legs", ["hypertrophy", "legs"], "hypertrophy", 2, {
+      patterns: ["squat", "lunge"],
+      regions: ["quads"],
+    }),
+    b("Cadena posterior", "legs", ["hypertrophy", "legs"], "hypertrophy", 2, {
+      patterns: ["hinge", "hip-extension"],
+      regions: ["hamstrings", "glutes"],
+    }),
+    b("Pantorrillas", "legs", ["hypertrophy", "legs"], "hypertrophy", 1, {
+      regions: ["calves"],
     }),
     mobility,
   ],
